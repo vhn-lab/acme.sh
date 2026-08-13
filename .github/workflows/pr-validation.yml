@@ -1,0 +1,46 @@
+name: PR validation
+
+on:
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  shell-syntax:
+    name: Shell syntax
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out proposed changes
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Validate acme.sh syntax
+        run: sh -n ./acme.sh
+
+      - name: Validate shell scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            sh -n "$file"
+          done < <(find deploy dnsapi notify -type f -name '*.sh' -print0)
+
+  shellcheck-custom:
+    name: ShellCheck custom scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out proposed changes
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Run ShellCheck on custom scripts when present
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -d '' files < <(find custom -type f -name '*.sh' -print0 2>/dev/null || true)
+          if ((${#files[@]} == 0)); then
+            echo "No custom shell scripts to check."
+            exit 0
+          fi
+          shellcheck -s sh "${files[@]}"
