@@ -27,6 +27,9 @@ jobs:
             sh -n "$file"
           done < <(find deploy dnsapi notify -type f -name '*.sh' -print0)
 
+      - name: Run OBS DNS API unit tests
+        run: sh custom/avaya/tests/test_dns_obs.sh
+
   shellcheck-custom:
     name: ShellCheck custom scripts
     runs-on: ubuntu-latest
