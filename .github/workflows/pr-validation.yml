@@ -30,6 +30,9 @@ jobs:
       - name: Run OBS DNS API unit tests
         run: sh custom/avaya/tests/test_dns_obs.sh
 
+      - name: Run Avaya configuration parser unit tests
+        run: sh custom/avaya/tests/test_config.sh
+
   shellcheck-custom:
     name: ShellCheck custom scripts
     runs-on: ubuntu-latest
