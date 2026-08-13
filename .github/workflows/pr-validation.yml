@@ -33,6 +33,9 @@ jobs:
       - name: Run Avaya configuration parser unit tests
         run: sh custom/avaya/tests/test_config.sh
 
+      - name: Run Avaya certificate validation unit tests
+        run: sh custom/avaya/tests/test_validate.sh
+
   shellcheck-custom:
     name: ShellCheck custom scripts
     runs-on: ubuntu-latest
