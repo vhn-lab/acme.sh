@@ -109,4 +109,22 @@ if grep -E 'OLD_SECRET_TOKEN|NEW_SECRET_TOKEN|SECOND_SECRET_TOKEN|Authorization:
   fail 'a secret was written to logs'
 fi
 
+mkdir "${OBS_File}.lock"
+printf '%s\n' '99999999' >"${OBS_File}.lock/pid"
+OBS_LockStaleSeconds=0
+_obs_lock || fail 'stale credentials lock was not recovered'
+_obs_unlock
+[ ! -d "${OBS_File}.lock" ] || fail 'credentials lock was not released by its owner'
+
+printf '%s\n' \
+  '# hostName;zoneName;apiToken' \
+  'ipo1.example.invalid;example.invalid;OLD_SECRET_TOKEN' >"$OBS_File"
+chmod 600 "$OBS_File"
+_obs_preflight_credentials_update() { return 1; }
+if _obs_prepare '_acme-challenge.ipo1.example.invalid'; then
+  fail 'token rotation continued after preflight storage failure'
+fi
+grep 'OLD_SECRET_TOKEN' "$OBS_File" >/dev/null ||
+  fail 'preflight failure unexpectedly changed credentials'
+
 printf '%s\n' 'PASS: dns_obs.sh unit tests'

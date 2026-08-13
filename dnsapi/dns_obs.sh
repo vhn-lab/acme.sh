@@ -11,6 +11,7 @@ Credentials format:
 
 OBS_Api="${OBS_Api:-https://ihmdns.eolas.fr/api/v1}"
 OBS_RenewBeforeDays="${OBS_RenewBeforeDays:-15}"
+OBS_LockStaleSeconds="${OBS_LockStaleSeconds:-600}"
 
 dns_obs_add() {
   fulldomain=$1
@@ -21,7 +22,7 @@ dns_obs_add() {
   fi
 
   _info "Adding OBS DNS TXT record for $fulldomain"
-  if ! _obs_rest POST "$_obs_zone/record" "{\"record\":{\"ttl\":60,\"name\":\"$fulldomain\",\"type\":\"TXT\",\"value\":\"$txtvalue\"}}"; then
+  if ! _obs_rest POST "$_obs_zone/record" "{\"record\":{\"ttl\":3600,\"name\":\"$fulldomain\",\"type\":\"TXT\",\"value\":\"$txtvalue\"}}"; then
     _err "OBS DNS TXT record creation failed for $fulldomain"
     return 1
   fi
@@ -170,6 +171,11 @@ _obs_check_token() {
     return 0
   fi
 
+  if ! _obs_preflight_credentials_update; then
+    _err "OBS credentials cannot be updated safely; token rotation was not attempted"
+    return 1
+  fi
+
   _info "Rotating OBS API token before expiration"
   _obs_old_token=$_obs_token
   if ! _obs_rest POST token/rotate ""; then
@@ -193,6 +199,19 @@ _obs_check_token() {
     return 1
   fi
   _obs_token=$_obs_new_token
+  return 0
+}
+
+_obs_preflight_credentials_update() {
+  _obs_preflight_tmp="${OBS_File}.preflight.$$"
+  if ! (umask 077 && : >"$_obs_preflight_tmp"); then
+    rm -f "$_obs_preflight_tmp"
+    return 1
+  fi
+  if ! chmod 600 "$_obs_preflight_tmp" || ! rm -f "$_obs_preflight_tmp"; then
+    rm -f "$_obs_preflight_tmp"
+    return 1
+  fi
   return 0
 }
 
@@ -271,6 +290,7 @@ _obs_lock() {
   _obs_lock_dir="${OBS_File}.lock"
   _obs_lock_attempt=0
   while ! mkdir "$_obs_lock_dir" 2>/dev/null; do
+    _obs_recover_stale_lock || true
     _obs_lock_attempt=$((_obs_lock_attempt + 1))
     if [ "$_obs_lock_attempt" -ge 30 ]; then
       _err "Timed out waiting for the OBS credentials lock"
@@ -278,9 +298,48 @@ _obs_lock() {
     fi
     _sleep 1
   done
+  if ! (umask 077 && printf '%s\n' "$$" >"$_obs_lock_dir/pid"); then
+    rmdir "$_obs_lock_dir" 2>/dev/null || true
+    _err "Unable to record ownership of the OBS credentials lock"
+    return 1
+  fi
   return 0
 }
 
+_obs_recover_stale_lock() {
+  case "$OBS_LockStaleSeconds" in
+    '' | *[!0-9]*) return 1 ;;
+  esac
+  [ -d "$_obs_lock_dir" ] || return 1
+
+  _obs_lock_mtime=$(stat -c '%Y' "$_obs_lock_dir" 2>/dev/null) || return 1
+  _obs_lock_now=$(date +%s)
+  [ $((_obs_lock_now - _obs_lock_mtime)) -ge "$OBS_LockStaleSeconds" ] || return 1
+
+  _obs_lock_pid=
+  if [ -r "$_obs_lock_dir/pid" ]; then
+    IFS= read -r _obs_lock_pid <"$_obs_lock_dir/pid" || true
+  fi
+  case "$_obs_lock_pid" in
+    '' | *[!0-9]*) ;;
+    *)
+      if kill -0 "$_obs_lock_pid" 2>/dev/null; then
+        return 1
+      fi
+      ;;
+  esac
+
+  rm -f "$_obs_lock_dir/pid"
+  rmdir "$_obs_lock_dir" 2>/dev/null
+}
+
 _obs_unlock() {
-  rmdir "$_obs_lock_dir" 2>/dev/null || true
+  _obs_lock_pid=
+  if [ -r "$_obs_lock_dir/pid" ]; then
+    IFS= read -r _obs_lock_pid <"$_obs_lock_dir/pid" || true
+  fi
+  if [ "$_obs_lock_pid" = "$$" ]; then
+    rm -f "$_obs_lock_dir/pid"
+    rmdir "$_obs_lock_dir" 2>/dev/null || true
+  fi
 }

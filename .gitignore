@@ -1,7 +1,7 @@
 # Fork-specific Avaya runtime configuration and secrets
+credentials.csv
 custom/avaya/config
 custom/avaya/*.local
-custom/avaya/credentials.csv
 custom/avaya/secrets/
 
 # Certificate material generated or staged by the Avaya integration
