@@ -18,8 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out approved master
-        # actions/checkout v4.4.0 — pinned to an immutable commit for supply-chain safety.
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        # actions/checkout v6.0.2 — pinned to an immutable commit for supply-chain safety.
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0
           ref: master
@@ -34,11 +34,11 @@ jobs:
           git remote add upstream https://github.com/acmesh-official/acme.sh.git
           git fetch upstream master
 
-      - name: Detect upstream changes
+      - name: Detect new upstream commits
         id: changes
         shell: bash
         run: |
-          if git diff --quiet HEAD upstream/master; then
+          if git merge-base --is-ancestor upstream/master HEAD; then
             echo "available=false" >> "$GITHUB_OUTPUT"
           else
             echo "available=true" >> "$GITHUB_OUTPUT"
@@ -48,9 +48,20 @@ jobs:
         if: steps.changes.outputs.available == 'true'
         shell: bash
         run: |
-          # This branch is automation-owned. Do not add manual commits to it.
+          set -euo pipefail
           BRANCH="update/upstream-review"
-          git checkout -B "$BRANCH" upstream/master
+
+          # Always start from our approved master so fork-only files are preserved.
+          git checkout -B "$BRANCH" master
+
+          # Merge official upstream history without publishing anything if a conflict occurs.
+          if ! git merge --no-ff --no-edit upstream/master; then
+            git merge --abort || true
+            echo "Upstream merge has conflicts. Manual review is required; no review branch was pushed."
+            exit 1
+          fi
+
+          # This branch is automation-owned. Do not add manual commits to it.
           git push --force-with-lease origin "$BRANCH"
 
       - name: Open pull request for manual review
@@ -64,5 +75,5 @@ jobs:
               --base master \
               --head update/upstream-review \
               --title "Review upstream acme.sh updates" \
-              --body "Automated proposal from the official acmesh-official/acme.sh master branch. Review the commits and Files changed before merging. The update/upstream-review branch is automation-owned; do not commit to it manually. Nothing is merged automatically."
+              --body "Automated proposal merging new commits from the official acmesh-official/acme.sh master branch into this fork's approved master. Fork-only files are preserved. Review commits, Files changed, and required checks before merging. The update/upstream-review branch is automation-owned; do not commit to it manually. Nothing is merged automatically."
           fi
