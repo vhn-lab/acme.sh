@@ -2,9 +2,10 @@
 
 set -eu
 
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 
 # shellcheck source=avaya-lib.sh
+# shellcheck disable=SC1091
 . "$SCRIPT_DIR/avaya-lib.sh"
 
 usage() {
@@ -86,6 +87,9 @@ printf 'PLAN_START mode=dry-run profile=%s fingerprint=%s failure_policy=%s\n' \
 PLAN_STOPPED=no
 PLAN_FAILURES=0
 while IFS=';' read -r TARGET_ENABLED TARGET_TYPE TARGET_NAME TARGET_HOST TARGET_USER TARGET_PROFILE TARGET_ROLE; do
+
+  [ "$TARGET_ENABLED" = yes ] || fail "inactive target unexpectedly selected: $TARGET_NAME"
+  [ "$TARGET_PROFILE" = "$PROFILE" ] || fail "wrong profile unexpectedly selected: $TARGET_NAME"
 
   if [ "$PLAN_STOPPED" = yes ]; then
     TARGET_STATUS=NOT_ATTEMPTED

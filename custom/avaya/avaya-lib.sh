@@ -14,7 +14,7 @@ avaya_load_config() {
   LOCK_FILE=/run/lock/acme-avaya-deploy.lock
   SSH_KNOWN_HOSTS=/etc/acme-avaya/ssh_known_hosts
   SSH_CONNECT_TIMEOUT=10
-  FAILURE_POLICY=continue
+  FAILURE_POLICY='continue'
   MIN_REMAINING_DAYS=7
 
   if [ ! -f "$AVAYA_CONFIG_FILE" ] || [ ! -r "$AVAYA_CONFIG_FILE" ]; then
@@ -179,4 +179,3 @@ avaya_targets_for_profile() {
     $1 == "yes" && $6 == profile { print }
   ' "$AVAYA_TARGETS_FILE"
 }
-

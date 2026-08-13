@@ -2,9 +2,10 @@
 
 set -eu
 
-TEST_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd)
+TEST_ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd)
 
 # shellcheck source=../../../dnsapi/dns_obs.sh
+# shellcheck disable=SC1091
 . "$TEST_ROOT/dnsapi/dns_obs.sh"
 
 _readaccountconf_mutable() { return 0; }
@@ -45,12 +46,14 @@ write_valid_credentials() {
 }
 
 mock_future_expiry() {
+  # shellcheck disable=SC2317
   _get() {
     printf '%s\n' '{"expiresAt":"2099-01-01T00:00:00Z"}'
   }
 }
 
 mock_expired_token() {
+  # shellcheck disable=SC2317
   _get() {
     printf '%s\n' '{"expiresAt":"2000-01-01T00:00:00Z"}'
   }

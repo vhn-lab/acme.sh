@@ -2,9 +2,10 @@
 
 set -eu
 
-TEST_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd)
+TEST_ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd)
 
 # shellcheck source=../avaya-lib.sh
+# shellcheck disable=SC1091
 . "$TEST_ROOT/custom/avaya/avaya-lib.sh"
 
 fail() {
@@ -48,6 +49,8 @@ if avaya_validate_targets "$TEST_DIR/targets.csv" >/dev/null 2>&1; then
 fi
 sed -i '$d' "$TEST_DIR/targets.csv"
 
+# The literal command substitution below is malicious test data and must not expand.
+# shellcheck disable=SC2016
 printf '%s\n' 'yes;asbce;BAD;$(touch /tmp/injected);ipcs;voice-edge;primary' >>"$TEST_DIR/targets.csv"
 if avaya_validate_targets "$TEST_DIR/targets.csv" >/dev/null 2>&1; then
   fail 'target containing command syntax was accepted'

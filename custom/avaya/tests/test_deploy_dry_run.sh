@@ -2,7 +2,7 @@
 
 set -eu
 
-TEST_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd)
+TEST_ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd)
 DEPLOYER="$TEST_ROOT/custom/avaya/avaya-deploy.sh"
 
 fail() {

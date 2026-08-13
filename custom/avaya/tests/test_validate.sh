@@ -2,7 +2,7 @@
 
 set -eu
 
-TEST_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd)
+TEST_ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd)
 VALIDATOR="$TEST_ROOT/custom/avaya/avaya-validate.sh"
 
 fail() {
@@ -78,4 +78,3 @@ if sh "$VALIDATOR" --cert "$TEST_DIR/server.crt" --key "$TEST_DIR/server.key" \
 fi
 
 printf '%s\n' 'PASS: Avaya certificate validation tests'
-

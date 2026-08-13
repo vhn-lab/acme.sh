@@ -47,20 +47,23 @@ done
 case "$MIN_DAYS" in
   '' | *[!0-9]*) fail '--min-days must be an integer' ;;
 esac
-[ "$MIN_DAYS" -ge 1 ] && [ "$MIN_DAYS" -le 90 ] ||
+if [ "$MIN_DAYS" -lt 1 ] || [ "$MIN_DAYS" -gt 90 ]; then
   fail '--min-days must be between 1 and 90'
+fi
 
 case "$EXPECTED_NAME" in
   '' | .* | *. | *..* | *[!A-Za-z0-9._-]*) fail 'invalid expected DNS name' ;;
 esac
 
 for REQUIRED_FILE in "$CERT_FILE" "$KEY_FILE" "$FULLCHAIN_FILE"; do
-  [ -f "$REQUIRED_FILE" ] && [ -r "$REQUIRED_FILE" ] && [ -s "$REQUIRED_FILE" ] ||
+  if [ ! -f "$REQUIRED_FILE" ] || [ ! -r "$REQUIRED_FILE" ] || [ ! -s "$REQUIRED_FILE" ]; then
     fail "missing, unreadable, or empty file: $REQUIRED_FILE"
+  fi
 done
 if [ -n "$TRUST_FILE" ]; then
-  [ -f "$TRUST_FILE" ] && [ -r "$TRUST_FILE" ] && [ -s "$TRUST_FILE" ] ||
+  if [ ! -f "$TRUST_FILE" ] || [ ! -r "$TRUST_FILE" ] || [ ! -s "$TRUST_FILE" ]; then
     fail "invalid trust file: $TRUST_FILE"
+  fi
 fi
 
 KEY_MODE=$(stat -c '%a' "$KEY_FILE" 2>/dev/null) || fail 'unable to inspect private-key permissions'
