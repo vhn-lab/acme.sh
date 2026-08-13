@@ -1,0 +1,68 @@
+name: Upstream update review
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: upstream-update-review
+  cancel-in-progress: false
+
+jobs:
+  propose-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out approved master
+        # actions/checkout v4.4.0 — pinned to an immutable commit for supply-chain safety.
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          ref: master
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch official upstream
+        run: |
+          git remote add upstream https://github.com/acmesh-official/acme.sh.git
+          git fetch upstream master
+
+      - name: Detect upstream changes
+        id: changes
+        shell: bash
+        run: |
+          if git diff --quiet HEAD upstream/master; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create or refresh review branch
+        if: steps.changes.outputs.available == 'true'
+        shell: bash
+        run: |
+          # This branch is automation-owned. Do not add manual commits to it.
+          BRANCH="update/upstream-review"
+          git checkout -B "$BRANCH" upstream/master
+          git push --force-with-lease origin "$BRANCH"
+
+      - name: Open pull request for manual review
+        if: steps.changes.outputs.available == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh pr list --base master --head update/upstream-review --state open --json number --jq 'length' | grep -q '^0$'; then
+            gh pr create \
+              --base master \
+              --head update/upstream-review \
+              --title "Review upstream acme.sh updates" \
+              --body "Automated proposal from the official acmesh-official/acme.sh master branch. Review the commits and Files changed before merging. The update/upstream-review branch is automation-owned; do not commit to it manually. Nothing is merged automatically."
+          fi
