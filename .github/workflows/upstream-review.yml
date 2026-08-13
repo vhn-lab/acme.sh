@@ -18,7 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out approved master
-        uses: actions/checkout@v4
+        # actions/checkout v4.4.0 — pinned to an immutable commit for supply-chain safety.
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
           ref: master
@@ -47,6 +48,7 @@ jobs:
         if: steps.changes.outputs.available == 'true'
         shell: bash
         run: |
+          # This branch is automation-owned. Do not add manual commits to it.
           BRANCH="update/upstream-review"
           git checkout -B "$BRANCH" upstream/master
           git push --force-with-lease origin "$BRANCH"
@@ -62,5 +64,5 @@ jobs:
               --base master \
               --head update/upstream-review \
               --title "Review upstream acme.sh updates" \
-              --body "Automated proposal from the official acmesh-official/acme.sh master branch. Review the commits and Files changed before merging. Nothing is merged automatically."
+              --body "Automated proposal from the official acmesh-official/acme.sh master branch. Review the commits and Files changed before merging. The update/upstream-review branch is automation-owned; do not commit to it manually. Nothing is merged automatically."
           fi
