@@ -36,6 +36,9 @@ jobs:
       - name: Run Avaya certificate validation unit tests
         run: sh custom/avaya/tests/test_validate.sh
 
+      - name: Run Avaya dry-run deployment planning tests
+        run: sh custom/avaya/tests/test_deploy_dry_run.sh
+
   shellcheck-custom:
     name: ShellCheck custom scripts
     runs-on: ubuntu-latest
