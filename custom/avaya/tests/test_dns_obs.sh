@@ -112,6 +112,7 @@ fi
 mkdir "${OBS_File}.lock"
 printf '%s\n' '99999999' >"${OBS_File}.lock/pid"
 OBS_LockStaleSeconds=0
+export OBS_LockStaleSeconds
 _obs_lock || fail 'stale credentials lock was not recovered'
 _obs_unlock
 [ ! -d "${OBS_File}.lock" ] || fail 'credentials lock was not released by its owner'
