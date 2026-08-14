@@ -42,6 +42,9 @@ jobs:
       - name: Run Avaya PKCS12 creation tests
         run: sh custom/avaya/tests/test_pkcs12.sh
 
+      - name: Run IP Office installation adapter tests
+        run: sh custom/avaya/tests/test_ipo_install.sh
+
   shellcheck-custom:
     name: ShellCheck custom scripts
     runs-on: ubuntu-latest
