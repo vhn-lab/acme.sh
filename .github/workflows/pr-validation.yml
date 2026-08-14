@@ -45,6 +45,9 @@ jobs:
       - name: Run IP Office installation adapter tests
         run: sh custom/avaya/tests/test_ipo_install.sh
 
+      - name: Run ASBCE transactional installer tests
+        run: sh custom/avaya/tests/test_asbce_install.sh
+
   shellcheck-custom:
     name: ShellCheck custom scripts
     runs-on: ubuntu-latest
