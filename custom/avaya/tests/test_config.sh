@@ -28,7 +28,7 @@ cp "$TEST_ROOT/custom/avaya/targets.example.csv" "$TEST_DIR/targets.csv"
 avaya_load_config "$TEST_DIR/config" || fail 'valid config was rejected'
 avaya_validate_targets "$TEST_DIR/targets.csv" || fail 'valid targets were rejected'
 
-[ "$(avaya_targets_for_profile "$TEST_DIR/targets.csv" voice-edge | wc -l)" -eq 4 ] ||
+[ "$(avaya_targets_for_profile "$TEST_DIR/targets.csv" voice-edge | wc -l)" -eq 1 ] ||
   fail 'profile target selection returned an unexpected count'
 
 printf '%s\n' 'UNKNOWN_KEY=value' >>"$TEST_DIR/config"
@@ -37,11 +37,13 @@ if avaya_load_config "$TEST_DIR/config" >/dev/null 2>&1; then
 fi
 sed -i '$d' "$TEST_DIR/config"
 
-printf '%s\n' 'yes;ipo;IPO3;ipo3.example.invalid;root;voice-edge;standalone' >>"$TEST_DIR/targets.csv"
+sed -i 's/^no;ipo;IPOS;/yes;ipo;IPOS;/' "$TEST_DIR/targets.csv"
+printf '%s\n' 'yes;ipo;IPO-EXTRA;ipo-extra.example.invalid;root;voice-edge;standalone' >>"$TEST_DIR/targets.csv"
 if avaya_validate_targets "$TEST_DIR/targets.csv" >/dev/null 2>&1; then
   fail 'more than two active IP Office targets were accepted'
 fi
 sed -i '$d' "$TEST_DIR/targets.csv"
+sed -i 's/^yes;ipo;IPOS;/no;ipo;IPOS;/' "$TEST_DIR/targets.csv"
 
 printf '%s\n' 'yes;ipo;BAD;ipo.example.invalid;root;voice-edge;primary;extra' >>"$TEST_DIR/targets.csv"
 if avaya_validate_targets "$TEST_DIR/targets.csv" >/dev/null 2>&1; then
@@ -51,10 +53,16 @@ sed -i '$d' "$TEST_DIR/targets.csv"
 
 # The literal command substitution below is malicious test data and must not expand.
 # shellcheck disable=SC2016
-printf '%s\n' 'yes;asbce;BAD;$(touch /tmp/injected);ipcs;voice-edge;primary' >>"$TEST_DIR/targets.csv"
+printf '%s\n' 'yes;ipo;BAD;$(touch /tmp/injected);root;voice-edge;primary' >>"$TEST_DIR/targets.csv"
 if avaya_validate_targets "$TEST_DIR/targets.csv" >/dev/null 2>&1; then
   fail 'target containing command syntax was accepted'
 fi
 [ ! -e /tmp/injected ] || fail 'configuration content was executed'
+
+sed -i '$d' "$TEST_DIR/targets.csv"
+printf '%s\n' 'yes;other;BAD;other.example.invalid;root;voice-edge;primary' >>"$TEST_DIR/targets.csv"
+if avaya_validate_targets "$TEST_DIR/targets.csv" >/dev/null 2>&1; then
+  fail 'unsupported target type was accepted'
+fi
 
 printf '%s\n' 'PASS: Avaya configuration parser tests'

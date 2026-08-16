@@ -57,7 +57,9 @@ if ! printf '%s\n' "$SERVER_IP" | awk -F. '
 fi
 
 for INPUT_FILE in "$P12_FILE" "$PASSWORD_FILE" "$EXPECTED_CERT"; do
-  [ -f "$INPUT_FILE" ] && [ -r "$INPUT_FILE" ] || fail "input is missing or unreadable: $INPUT_FILE"
+  if [ ! -f "$INPUT_FILE" ] || [ ! -r "$INPUT_FILE" ]; then
+    fail "input is missing or unreadable: $INPUT_FILE"
+  fi
 done
 
 PASSWORD_MODE=$(stat -c '%a' "$PASSWORD_FILE" 2>/dev/null) || fail 'cannot inspect password file permissions'
@@ -80,8 +82,12 @@ else
 fi
 
 [ "$EFFECTIVE_UID" -eq 0 ] || fail 'root privileges are required'
-[ -d "$CERT_DIR" ] && [ -w "$CERT_DIR" ] || fail "Avaya certificate directory is unavailable: $CERT_DIR"
-[ -f "$GEN_CERTS" ] && [ -x "$GEN_CERTS" ] || fail "Avaya certificate script is unavailable: $GEN_CERTS"
+if [ ! -d "$CERT_DIR" ] || [ ! -w "$CERT_DIR" ]; then
+  fail "Avaya certificate directory is unavailable: $CERT_DIR"
+fi
+if [ ! -f "$GEN_CERTS" ] || [ ! -x "$GEN_CERTS" ]; then
+  fail "Avaya certificate script is unavailable: $GEN_CERTS"
+fi
 
 OUT_CERT="$CERT_DIR/cert_to_import.pem"
 DEST_P12="$CERT_DIR/server_$SERVER_IP.p12"

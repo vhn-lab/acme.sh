@@ -27,9 +27,6 @@ jobs:
             sh -n "$file"
           done < <(find deploy dnsapi notify -type f -name '*.sh' -print0)
 
-      - name: Run OBS DNS API unit tests
-        run: sh custom/avaya/tests/test_dns_obs.sh
-
       - name: Run Avaya configuration parser unit tests
         run: sh custom/avaya/tests/test_config.sh
 
@@ -44,9 +41,6 @@ jobs:
 
       - name: Run IP Office installation adapter tests
         run: sh custom/avaya/tests/test_ipo_install.sh
-
-      - name: Run ASBCE transactional installer tests
-        run: sh custom/avaya/tests/test_asbce_install.sh
 
   shellcheck-custom:
     name: ShellCheck custom scripts

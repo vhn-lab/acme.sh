@@ -50,7 +50,9 @@ done
 [ -n "$OUTPUT_FILE" ] || fail '--output is required'
 
 for INPUT_FILE in "$CERT_FILE" "$KEY_FILE" "$FULLCHAIN_FILE" "$PASSWORD_FILE"; do
-  [ -f "$INPUT_FILE" ] && [ -r "$INPUT_FILE" ] || fail "input is missing or unreadable: $INPUT_FILE"
+  if [ ! -f "$INPUT_FILE" ] || [ ! -r "$INPUT_FILE" ]; then
+    fail "input is missing or unreadable: $INPUT_FILE"
+  fi
 done
 
 case "$OUTPUT_FILE" in
@@ -60,7 +62,9 @@ esac
 [ ! -e "$OUTPUT_FILE" ] || fail "output already exists: $OUTPUT_FILE"
 
 OUTPUT_DIR=${OUTPUT_FILE%/*}
-[ -d "$OUTPUT_DIR" ] && [ -w "$OUTPUT_DIR" ] || fail "output directory is missing or unwritable: $OUTPUT_DIR"
+if [ ! -d "$OUTPUT_DIR" ] || [ ! -w "$OUTPUT_DIR" ]; then
+  fail "output directory is missing or unwritable: $OUTPUT_DIR"
+fi
 
 PASSWORD_MODE=$(stat -c '%a' "$PASSWORD_FILE" 2>/dev/null) ||
   fail 'cannot inspect password file permissions'

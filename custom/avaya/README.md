@@ -31,16 +31,29 @@ enabled;type;name;host;sshUser;certificateProfile;role
 ```
 
 - `enabled`: `yes` or `no`.
-- `type`: `ipo` or `asbce`.
+- `type`: `ipo`. Other Avaya product types are outside the current scope.
 - `name`: unique label used in logs and state files.
 - `host`: DNS name or IP address used for SSH.
 - `sshUser`: remote account dedicated to the target type.
 - `certificateProfile`: groups targets that receive the same certificate.
 - `role`: `standalone`, `primary`, or `secondary`.
 
-This model supports one or two IP Office systems and zero, one, or two ASBCE
-systems without duplicating deployment scripts. It also allows a future setup to
-use separate certificates by assigning different certificate profiles.
+This model supports one or two IP Office systems without duplicating deployment
+scripts. It also allows the two systems to use separate certificates by assigning
+different certificate profiles.
 
-The example lists the largest supported topology. Unused targets are removed or
-set to `enabled=no` in the production copy.
+The example enables one IP Office system and keeps a second system disabled. Set
+the second target to `enabled=yes` only after it is available in the LAB and its
+deployment procedure has been validated.
+
+ASBCE integration is intentionally deferred until representative ASBCE systems
+are available in the LAB.
+
+## Initial ACME validation
+
+The initial LAB validation uses manual DNS-01 and the ACME staging environment.
+No DNS provider credentials are stored or used by this integration. See
+`MANUAL-DNS01-TEST.md` for the guarded procedure.
+
+Manual DNS mode cannot renew certificates unattended. Automated issuance and
+renewal remain out of scope until a DNS API integration can be tested safely.

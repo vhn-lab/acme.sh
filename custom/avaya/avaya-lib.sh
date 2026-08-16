@@ -135,7 +135,7 @@ avaya_validate_targets() {
       role = $7
 
       if (enabled != "yes" && enabled != "no") fail("enabled must be yes or no")
-      if (type != "ipo" && type != "asbce") fail("type must be ipo or asbce")
+      if (type != "ipo") fail("type must be ipo")
       if (name !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/) fail("invalid target name")
       if (host !~ /^[A-Za-z0-9][A-Za-z0-9._:-]*$/) fail("invalid host")
       if (user !~ /^[A-Za-z_][A-Za-z0-9_-]*$/) fail("invalid SSH user")
@@ -144,15 +144,10 @@ avaya_validate_targets() {
       if (seen_name[name]++) fail("duplicate target name " name)
 
       if (enabled == "yes" && type == "ipo") active_ipo++
-      if (enabled == "yes" && type == "asbce") active_asbce++
     }
     END {
       if (active_ipo < 1 || active_ipo > 2) {
         print "Targets error: expected one or two active IP Office targets" > "/dev/stderr"
-        invalid = 1
-      }
-      if (active_asbce > 2) {
-        print "Targets error: expected zero, one, or two active ASBCE targets" > "/dev/stderr"
         invalid = 1
       }
       exit invalid ? 1 : 0

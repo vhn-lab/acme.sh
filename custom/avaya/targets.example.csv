@@ -1,6 +1,3 @@
 # enabled;type;name;host;sshUser;certificateProfile;role
-yes;ipo;IPO1;ipo1.example.invalid;root;voice-edge;primary
-yes;ipo;IPO2;ipo2.example.invalid;root;voice-edge;secondary
-yes;asbce;SBC1;sbc1.example.invalid;ipcs;voice-edge;primary
-yes;asbce;SBC2;sbc2.example.invalid;ipcs;voice-edge;secondary
-
+yes;ipo;IPO;ipo;root;voice-edge;primary
+no;ipo;IPOS;ipos;root;voice-edge;secondary
