@@ -1,0 +1,3 @@
+# enabled;type;name;host;sshUser;certificateProfile;role
+yes;ipo;IPO;ipo;root;voice-edge;primary
+no;ipo;IPOS;ipos;root;voice-edge;secondary

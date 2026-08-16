@@ -1,0 +1,12 @@
+# Copy this file outside the Git repository before use.
+# The deployment engine parses these values as data and never sources this file.
+
+TARGETS_FILE=/etc/acme-avaya/targets.csv
+STATE_DIR=/var/lib/acme-avaya
+LOG_FILE=/var/log/acme-avaya/deploy.log
+LOCK_FILE=/run/lock/acme-avaya-deploy.lock
+SSH_KNOWN_HOSTS=/etc/acme-avaya/ssh_known_hosts
+SSH_CONNECT_TIMEOUT=10
+FAILURE_POLICY=continue
+MIN_REMAINING_DAYS=7
+

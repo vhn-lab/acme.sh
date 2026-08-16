@@ -14,10 +14,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out proposed changes
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - name: Validate acme.sh syntax
         run: sh -n ./acme.sh
+
+      - name: Validate fork upgrade source
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'PROJECT="https://github.com/vhn-lab/$PROJECT_NAME"' acme.sh
+          grep -F 'PROJECT_API="https://api.github.com/repos/vhn-lab"' acme.sh
+          if sed -n '1,20p' acme.sh | grep -F 'PROJECT="https://github.com/acmesh-official/'; then
+            echo "The built-in upgrade source points to the official upstream repository." >&2
+            exit 1
+          fi
 
       - name: Validate shell scripts
         shell: bash
@@ -27,12 +38,27 @@ jobs:
             sh -n "$file"
           done < <(find deploy dnsapi notify -type f -name '*.sh' -print0)
 
+      - name: Run Avaya configuration parser unit tests
+        run: sh custom/avaya/tests/test_config.sh
+
+      - name: Run Avaya certificate validation unit tests
+        run: sh custom/avaya/tests/test_validate.sh
+
+      - name: Run Avaya dry-run deployment planning tests
+        run: sh custom/avaya/tests/test_deploy_dry_run.sh
+
+      - name: Run Avaya PKCS12 creation tests
+        run: sh custom/avaya/tests/test_pkcs12.sh
+
+      - name: Run IP Office installation adapter tests
+        run: sh custom/avaya/tests/test_ipo_install.sh
+
   shellcheck-custom:
     name: ShellCheck custom scripts
     runs-on: ubuntu-latest
     steps:
       - name: Check out proposed changes
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - name: Run ShellCheck on custom scripts when present
         shell: bash

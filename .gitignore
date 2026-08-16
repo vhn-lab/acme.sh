@@ -1,0 +1,11 @@
+# Fork-specific Avaya runtime configuration and secrets
+credentials.csv
+custom/avaya/config
+custom/avaya/*.local
+custom/avaya/secrets/
+
+# Certificate material generated or staged by the Avaya integration
+custom/avaya/runtime/
+custom/avaya/*.key
+custom/avaya/*.p12
+custom/avaya/*.pfx
