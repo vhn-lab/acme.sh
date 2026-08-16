@@ -10,6 +10,9 @@ This directory contains fork-specific integration code for using acme.sh with Av
 - All changes must be proposed through a pull request and pass the required validation checks before merging into `master`.
 - `master` represents the approved version of this fork.
 - `update/upstream-review` is automation-owned and must not contain manual commits.
+- The built-in `--upgrade` command downloads only from the reviewed
+  `vhn-lab/acme.sh` fork. Official upstream changes enter through the review
+  workflow above, never directly on a LAB host.
 
 ## Planned integration
 

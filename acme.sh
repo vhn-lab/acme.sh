@@ -6,7 +6,8 @@ PROJECT_NAME="acme.sh"
 
 PROJECT_ENTRY="acme.sh"
 
-PROJECT="https://github.com/acmesh-official/$PROJECT_NAME"
+PROJECT="https://github.com/vhn-lab/$PROJECT_NAME"
+PROJECT_API="https://api.github.com/repos/vhn-lab"
 
 DEFAULT_INSTALL_HOME="$HOME/.$PROJECT_NAME"
 

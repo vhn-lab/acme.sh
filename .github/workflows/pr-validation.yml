@@ -19,6 +19,17 @@ jobs:
       - name: Validate acme.sh syntax
         run: sh -n ./acme.sh
 
+      - name: Validate fork upgrade source
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'PROJECT="https://github.com/vhn-lab/$PROJECT_NAME"' acme.sh
+          grep -F 'PROJECT_API="https://api.github.com/repos/vhn-lab"' acme.sh
+          if sed -n '1,20p' acme.sh | grep -F 'PROJECT="https://github.com/acmesh-official/'; then
+            echo "The built-in upgrade source points to the official upstream repository." >&2
+            exit 1
+          fi
+
       - name: Validate shell scripts
         shell: bash
         run: |
