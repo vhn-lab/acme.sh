@@ -10,7 +10,7 @@ CONFIG_ROOT=$PROJECT_ROOT/acme-avaya
 usage() {
   printf '%s\n' \
     'Usage: install.sh --email ADDRESS --server-ip IPV4' \
-    '       --revision COMMIT_OR_TAG --sha256 ARCHIVE_SHA256 [--dry-run]'
+    '       --revision FULL_COMMIT --sha256 ARCHIVE_SHA256 [--dry-run]'
 }
 
 fail() {
@@ -42,7 +42,8 @@ cleanup() {
     esac
   fi
 }
-trap cleanup EXIT HUP INT TERM
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -72,12 +73,9 @@ case "$REVISION" in
   *[!A-Za-z0-9._-]* | '') fail 'invalid revision' ;;
 esac
 case "$REVISION" in
-  v[0-9]*) ;;
-  *)
-    case "$REVISION" in *[!A-Fa-f0-9]*) fail 'revision must be a full commit or a version tag' ;; esac
-    [ "${#REVISION}" -eq 40 ] || fail 'full commit revision must contain 40 hexadecimal characters'
-    ;;
+  *[!A-Fa-f0-9]*) fail 'revision must be a full commit' ;;
 esac
+[ "${#REVISION}" -eq 40 ] || fail 'full commit revision must contain 40 hexadecimal characters'
 case "$EXPECTED_SHA256" in
   *[!A-Fa-f0-9]* | '') fail 'invalid SHA256 checksum' ;;
 esac
@@ -101,7 +99,7 @@ fi
 [ ! -e "$INSTALL_HOME" ] || fail "installation already exists: $INSTALL_HOME"
 [ ! -e "$CONFIG_ROOT" ] || fail "configuration already exists: $CONFIG_ROOT"
 
-for COMMAND in curl tar sha256sum openssl install awk sed crontab; do
+for COMMAND in curl tar sha256sum openssl install awk sed grep tr crontab; do
   command -v "$COMMAND" >/dev/null 2>&1 || fail "required command is unavailable: $COMMAND"
 done
 

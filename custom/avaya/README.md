@@ -21,16 +21,17 @@ implement controlled IP Office certificate deployment and automatic renewal.
 
 ## Production bootstrap
 
-Install an immutable reviewed revision with one command. The archive checksum
-must be obtained from the approved release record:
+Install an immutable reviewed commit with one command. `APPROVED_COMMIT` must
+be the full 40-character commit ID, and the archive checksum must be obtained
+from the approved release record:
 
 ```sh
 curl -fsSL \
-  https://raw.githubusercontent.com/vhn-lab/acme.sh/APPROVED_REVISION/custom/avaya/install.sh |
+  https://raw.githubusercontent.com/vhn-lab/acme.sh/APPROVED_COMMIT/custom/avaya/install.sh |
   sh -s -- \
     --email admin@example.com \
     --server-ip 192.0.2.10 \
-    --revision APPROVED_REVISION \
+    --revision APPROVED_COMMIT \
     --sha256 APPROVED_ARCHIVE_SHA256
 ```
 
