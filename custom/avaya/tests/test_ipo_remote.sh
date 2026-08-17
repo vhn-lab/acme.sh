@@ -54,13 +54,13 @@ AVAYA_SSH_BIN="$TEST_DIR/ssh" AVAYA_SCP_BIN="$TEST_DIR/scp" \
   --cert "$TEST_DIR/cert.pem" --key "$TEST_DIR/key.pem" \
   --fullchain "$TEST_DIR/fullchain.pem" --password-file "$TEST_DIR/password" \
   --known-hosts "$TEST_DIR/known_hosts" --connect-timeout 10 \
-  --backup-dir /var/lib/acme-avaya/backups \
+  --backup-dir /root/orange/script/acme-avaya/backups \
   >"$TEST_DIR/output"
 
 grep 'REMOTE_SIMULATION=OK' "$TEST_DIR/output" >/dev/null || fail 'remote execution was not invoked'
 grep 'BatchMode=yes' "$TEST_DIR/transport.log" >/dev/null || fail 'SSH BatchMode was not enforced'
 grep 'StrictHostKeyChecking=yes' "$TEST_DIR/transport.log" >/dev/null || fail 'strict host-key checking was not enforced'
-grep '/var/lib/acme-avaya/backups' "$TEST_DIR/transport.log" >/dev/null || fail 'backup directory was not forwarded'
+grep '/root/orange/script/acme-avaya/backups' "$TEST_DIR/transport.log" >/dev/null || fail 'backup directory was not forwarded'
 grep 'payload/server.p12' "$TEST_DIR/archive.list" >/dev/null || fail 'PKCS12 payload is missing'
 grep 'payload/password' "$TEST_DIR/archive.list" >/dev/null || fail 'password payload is missing'
 if grep 'payload/key.pem' "$TEST_DIR/archive.list" >/dev/null; then

@@ -126,6 +126,25 @@ grep -- '--server-ip 192.0.2.10' "$TEST_DIR/local-args" >/dev/null ||
 [ "$(stat -c '%a' "$TEST_DIR/deploy.lock")" = 600 ] ||
   fail 'deployment lock permissions are unsafe'
 
+cat >"$TEST_DIR/failing-local-helper" <<'MOCK'
+#!/usr/bin/env sh
+printf '%s\n' 'HELPER_DIAGNOSTIC import failed safely'
+exit 1
+MOCK
+chmod 700 "$TEST_DIR/failing-local-helper"
+rm -f "$TEST_DIR/state/voice-edge/IPO.sha256"
+if AVAYA_LOCAL_HELPER="$TEST_DIR/failing-local-helper" \
+  sh "$DEPLOYER" --apply --acknowledge-service-restarts \
+  --config "$TEST_DIR/config-continue" --profile voice-edge \
+  --cert "$TEST_DIR/server.crt" --key "$TEST_DIR/server.key" \
+  --fullchain "$TEST_DIR/fullchain.crt" --expected-name voice.example.invalid \
+  --trust-file "$TEST_DIR/ca.crt" --password-file "$TEST_DIR/password" \
+  >"$TEST_DIR/apply-failed"; then
+  fail 'failing local helper returned success'
+fi
+grep -F 'HELPER_DIAGNOSTIC import failed safely' "$TEST_DIR/apply-failed" >/dev/null ||
+  fail 'failing helper diagnostic output was hidden'
+
 (
   flock 8
   sleep 3

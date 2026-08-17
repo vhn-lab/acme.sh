@@ -14,9 +14,10 @@ This directory contains fork-specific integration code for using acme.sh with Av
   `vhn-lab/acme.sh` fork. Official upstream changes enter through the review
   workflow above, never directly on a LAB host.
 
-## Planned integration
+## Integration status
 
-The Avaya-specific deployment/renewal mechanism will be documented and implemented here after the exact IP Office certificate import/deployment procedure has been validated.
+The native `deploy/avaya_ipo.sh` hook and its local and SSH deployment helpers
+implement controlled IP Office certificate deployment and automatic renewal.
 
 ## Configuration model
 
@@ -58,14 +59,11 @@ deployment procedure has been validated.
 ASBCE integration is intentionally deferred until representative ASBCE systems
 are available in the LAB.
 
-## Initial ACME validation
+## ACME validation
 
-The initial LAB validation uses manual DNS-01 and the ACME staging environment.
-No DNS provider credentials are stored or used by this integration. See
-`MANUAL-DNS01-TEST.md` for the guarded procedure.
-
-Manual DNS mode cannot renew certificates unattended. Automated issuance and
-renewal remain out of scope until a DNS API integration can be tested safely.
+Certificate validation is independent of the Avaya deployment hook. Use an
+approved renewable acme.sh validation method. Manual DNS mode is unsuitable for
+unattended production renewal.
 
 ## LAB deployment findings
 
@@ -78,7 +76,7 @@ renewal remain out of scope until a DNS API integration can be tested safely.
   both the default and legacy providers. It does not alter the system OpenSSL
   configuration or enable legacy algorithms for unrelated processes.
 - Transactional backups are retained under
-  `/root/orange/script/acme.sh/avaya-backups/ipo-<UTC timestamp>-<PID>/`.
+  `/root/orange/script/acme-avaya/backups/ipo-<UTC timestamp>-<PID>/`.
   They contain only the active `server.pem`, `cert.pem`, `key.pem`, CA material,
   and any pre-existing import file. Application keystores are not copied.
 - A completed Avaya distribution has `.distrib_complete` present and
@@ -108,13 +106,13 @@ real deployment requires all three safeguards: `--apply`,
 ```sh
 custom/avaya/avaya-deploy.sh \
   --apply --acknowledge-service-restarts \
-  --config /etc/acme-avaya/config \
+  --config /root/orange/script/acme-avaya/config \
   --profile voice-edge \
   --cert /path/to/cert.pem \
   --key /path/to/key.pem \
   --fullchain /path/to/fullchain.pem \
   --expected-name ipo.example.invalid \
-  --password-file /run/acme-avaya/p12-password
+  --password-file /root/orange/script/acme-avaya/p12-password
 ```
 
 The remote helper uses BatchMode, strict host-key checking, the configured SSH

@@ -37,12 +37,12 @@ AVAYA_IPO_INSTALLER="$TEST_DIR/installer" \
 AVAYA_IPO_VERIFIER="$TEST_DIR/verifier" \
   sh "$HELPER" --server-ip 192.0.2.10 --cert "$TEST_DIR/cert.pem" \
   --key "$TEST_DIR/key.pem" --fullchain "$TEST_DIR/fullchain.pem" \
-  --password-file "$TEST_DIR/password" --backup-dir /var/lib/acme-avaya/backups
+  --password-file "$TEST_DIR/password" --backup-dir /root/orange/script/acme-avaya/backups
 
 grep -Fx builder "$TEST_DIR/log" >/dev/null || fail 'PKCS12 builder was not called'
 grep 'installer .*--acknowledge-service-restarts' "$TEST_DIR/log" >/dev/null ||
   fail 'installer did not receive restart acknowledgement'
-grep 'installer .*--backup-dir /var/lib/acme-avaya/backups' "$TEST_DIR/log" >/dev/null ||
+grep 'installer .*--backup-dir /root/orange/script/acme-avaya/backups' "$TEST_DIR/log" >/dev/null ||
   fail 'installer did not receive backup directory'
 grep 'verifier .*--host 127.0.0.1' "$TEST_DIR/log" >/dev/null ||
   fail 'local endpoints were not verified'

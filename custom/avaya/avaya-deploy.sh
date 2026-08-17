@@ -167,6 +167,7 @@ while IFS=';' read -r TARGET_ENABLED TARGET_TYPE TARGET_NAME TARGET_HOST TARGET_
           TARGET_STATUS=DEPLOYED
         fi
       else
+        [ -z "$TARGET_OUTPUT" ] || printf '%s\n' "$TARGET_OUTPUT"
         TARGET_STATUS=FAILED
         PLAN_FAILURES=$((PLAN_FAILURES + 1))
         [ "$FAILURE_POLICY" != stop ] || PLAN_STOPPED=yes
