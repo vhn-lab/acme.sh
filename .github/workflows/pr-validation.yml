@@ -50,6 +50,9 @@ jobs:
       - name: Run Avaya IP Office deploy hook tests
         run: sh custom/avaya/tests/test_deploy_hook.sh
 
+      - name: Run Avaya bootstrap installer tests
+        run: sh custom/avaya/tests/test_install.sh
+
       - name: Run Avaya PKCS12 creation tests
         run: sh custom/avaya/tests/test_pkcs12.sh
 
