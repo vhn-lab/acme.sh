@@ -8,12 +8,12 @@ avaya_config_error() {
 avaya_load_config() {
   AVAYA_CONFIG_FILE=$1
 
-  TARGETS_FILE=/etc/acme-avaya/targets.csv
-  STATE_DIR=/var/lib/acme-avaya
-  LOG_FILE=/var/log/acme-avaya/deploy.log
+  TARGETS_FILE=/root/orange/script/acme-avaya/targets.csv
+  STATE_DIR=/root/orange/script/acme-avaya/state
+  LOG_FILE=/root/orange/script/acme-avaya/logs/deploy.log
   LOCK_FILE=/run/lock/acme-avaya-deploy.lock
-  SSH_KNOWN_HOSTS=/etc/acme-avaya/ssh_known_hosts
-  REMOTE_BACKUP_DIR=/var/lib/acme-avaya/backups
+  SSH_KNOWN_HOSTS=/root/orange/script/acme-avaya/ssh_known_hosts
+  REMOTE_BACKUP_DIR=/root/orange/script/acme-avaya/backups
   SSH_CONNECT_TIMEOUT=10
   FAILURE_POLICY='continue'
   MIN_REMAINING_DAYS=7

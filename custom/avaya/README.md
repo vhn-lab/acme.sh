@@ -21,8 +21,10 @@ The Avaya-specific deployment/renewal mechanism will be documented and implement
 ## Configuration model
 
 Production configuration and secrets are stored outside the Git checkout, under
-`/etc/acme-avaya/` by default. Example files in this directory contain fictitious
-values only.
+`/root/orange/script/acme-avaya/` by default. This keeps all operational acme.sh
+material under `/root/orange/script/` while preserving a strict separation
+between upgradeable code and local secrets. Example files in this directory
+contain fictitious values only.
 
 `config.example` contains global `KEY=value` settings. The deployment engine
 parses a fixed allowlist of keys and never executes the file with `source` or `.`.
@@ -130,9 +132,9 @@ password remains in a root-readable external file.
 The initial deployment requires explicit configuration:
 
 ```sh
-export AVAYA_IPO_CONFIG=/etc/acme-avaya/config
+export AVAYA_IPO_CONFIG=/root/orange/script/acme-avaya/config
 export AVAYA_IPO_PROFILE=voice-edge
-export AVAYA_IPO_PASSWORD_FILE=/etc/acme-avaya/p12-password
+export AVAYA_IPO_PASSWORD_FILE=/root/orange/script/acme-avaya/p12-password
 export AVAYA_IPO_DEPLOYER=/root/orange/script/acme.sh/custom/avaya/avaya-deploy.sh
 export AVAYA_IPO_ACKNOWLEDGE_SERVICE_RESTARTS=yes
 
