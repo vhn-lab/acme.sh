@@ -19,6 +19,27 @@ This directory contains fork-specific integration code for using acme.sh with Av
 The native `deploy/avaya_ipo.sh` hook and its local and SSH deployment helpers
 implement controlled IP Office certificate deployment and automatic renewal.
 
+## Production bootstrap
+
+Install an immutable reviewed revision with one command. The archive checksum
+must be obtained from the approved release record:
+
+```sh
+curl -fsSL \
+  https://raw.githubusercontent.com/vhn-lab/acme.sh/APPROVED_REVISION/custom/avaya/install.sh |
+  sh -s -- \
+    --email admin@example.com \
+    --server-ip 192.0.2.10 \
+    --revision APPROVED_REVISION \
+    --sha256 APPROVED_ARCHIVE_SHA256
+```
+
+The bootstrap refuses to overwrite existing code or configuration. It verifies
+the archive before extraction, installs acme.sh and the Avaya helpers under
+`/root/orange/script/`, creates root-only configuration and secret files, and
+registers the normal acme.sh cron job. It does not issue or deploy a certificate
+and does not modify `/opt/Avaya`.
+
 ## Configuration model
 
 Production configuration and secrets are stored outside the Git checkout, under
