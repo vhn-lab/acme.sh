@@ -5,7 +5,7 @@ set -eu
 usage() {
   printf '%s\n' \
     'Usage: avaya-pkcs12.sh --cert FILE --key FILE --fullchain FILE' \
-    '       --password-file FILE --output FILE'
+    '       --password-file FILE --output FILE [--compatibility modern|legacy]'
 }
 
 fail() {
@@ -18,6 +18,7 @@ KEY_FILE=
 FULLCHAIN_FILE=
 PASSWORD_FILE=
 OUTPUT_FILE=
+COMPATIBILITY=modern
 TMP_DIR=
 TMP_P12=
 
@@ -38,6 +39,7 @@ while [ "$#" -gt 0 ]; do
     --fullchain) [ "$#" -ge 2 ] || fail 'missing value for --fullchain'; FULLCHAIN_FILE=$2; shift 2 ;;
     --password-file) [ "$#" -ge 2 ] || fail 'missing value for --password-file'; PASSWORD_FILE=$2; shift 2 ;;
     --output) [ "$#" -ge 2 ] || fail 'missing value for --output'; OUTPUT_FILE=$2; shift 2 ;;
+    --compatibility) [ "$#" -ge 2 ] || fail 'missing value for --compatibility'; COMPATIBILITY=$2; shift 2 ;;
     -h | --help) usage; exit 0 ;;
     *) fail "unknown argument: $1" ;;
   esac
@@ -48,6 +50,7 @@ done
 [ -n "$FULLCHAIN_FILE" ] || fail '--fullchain is required'
 [ -n "$PASSWORD_FILE" ] || fail '--password-file is required'
 [ -n "$OUTPUT_FILE" ] || fail '--output is required'
+case "$COMPATIBILITY" in modern | legacy) ;; *) fail '--compatibility must be modern or legacy' ;; esac
 
 for INPUT_FILE in "$CERT_FILE" "$KEY_FILE" "$FULLCHAIN_FILE" "$PASSWORD_FILE"; do
   if [ ! -f "$INPUT_FILE" ] || [ ! -r "$INPUT_FILE" ]; then
@@ -78,6 +81,12 @@ esac
 
 openssl x509 -in "$CERT_FILE" -noout >/dev/null 2>&1 || fail 'invalid leaf certificate'
 openssl pkey -in "$KEY_FILE" -noout >/dev/null 2>&1 || fail 'invalid private key'
+CERT_TEXT=$(openssl x509 -in "$CERT_FILE" -noout -text 2>/dev/null) ||
+  fail 'unable to inspect certificate public key'
+printf '%s\n' "$CERT_TEXT" | grep 'Public Key Algorithm: rsaEncryption' >/dev/null 2>&1 ||
+  fail 'IP Office certificate must use RSA'
+printf '%s\n' "$CERT_TEXT" | grep 'Public-Key: (2048 bit)' >/dev/null 2>&1 ||
+  fail 'IP Office certificate must use a 2048-bit RSA key'
 
 CERT_PUBLIC=$(openssl x509 -in "$CERT_FILE" -pubkey -noout |
   openssl pkey -pubin -outform DER 2>/dev/null | openssl dgst -sha256)
@@ -101,15 +110,27 @@ openssl crl2pkcs7 -nocrl -certfile "$CHAIN_FILE" 2>/dev/null |
 TMP_P12=$(mktemp "$OUTPUT_DIR/.avaya-pkcs12.XXXXXX") || fail 'cannot create temporary output file'
 chmod 600 "$TMP_P12"
 
-openssl pkcs12 -export -legacy -macalg SHA1 \
+if [ "$COMPATIBILITY" = legacy ]; then
+  PKCS12_EXPORT_OPTIONS='-legacy -macalg SHA1'
+  PKCS12_READ_OPTIONS=-legacy
+else
+  PKCS12_EXPORT_OPTIONS=
+  PKCS12_READ_OPTIONS=
+fi
+
+# PKCS12_EXPORT_OPTIONS contains only the fixed values defined above.
+# shellcheck disable=SC2086
+openssl pkcs12 -export $PKCS12_EXPORT_OPTIONS \
   -name server -in "$CERT_FILE" -inkey "$KEY_FILE" -certfile "$CHAIN_FILE" \
   -passout "file:$PASSWORD_FILE" -out "$TMP_P12" >/dev/null 2>&1 ||
   fail 'OpenSSL could not create an Avaya-compatible PKCS12 file'
 
-openssl pkcs12 -legacy -in "$TMP_P12" -noout \
+# shellcheck disable=SC2086
+openssl pkcs12 $PKCS12_READ_OPTIONS -in "$TMP_P12" -noout \
   -passin "file:$PASSWORD_FILE" >/dev/null 2>&1 || fail 'generated PKCS12 file could not be reopened'
 
-P12_CERT_PUBLIC=$(openssl pkcs12 -legacy -in "$TMP_P12" -clcerts -nokeys \
+# shellcheck disable=SC2086
+P12_CERT_PUBLIC=$(openssl pkcs12 $PKCS12_READ_OPTIONS -in "$TMP_P12" -clcerts -nokeys \
   -passin "file:$PASSWORD_FILE" 2>/dev/null |
   openssl x509 -pubkey -noout 2>/dev/null |
   openssl pkey -pubin -outform DER 2>/dev/null | openssl dgst -sha256)
@@ -121,4 +142,5 @@ chmod 600 "$OUTPUT_FILE"
 
 FINGERPRINT=$(openssl x509 -in "$CERT_FILE" -noout -fingerprint -sha256 |
   sed 's/^sha256 Fingerprint=//;s/^SHA256 Fingerprint=//')
-printf 'PKCS12_READY output=%s fingerprint=%s mode=600\n' "$OUTPUT_FILE" "$FINGERPRINT"
+printf 'PKCS12_READY output=%s fingerprint=%s mode=600 compatibility=%s\n' \
+  "$OUTPUT_FILE" "$FINGERPRINT" "$COMPATIBILITY"

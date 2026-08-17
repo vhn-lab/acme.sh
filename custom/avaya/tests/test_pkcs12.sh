@@ -33,11 +33,29 @@ printf '%s\n' "$OUTPUT" | grep '^PKCS12_READY ' >/dev/null || fail 'success was 
 if printf '%s\n' "$OUTPUT" | grep "$SECRET" >/dev/null; then fail 'password was exposed'; fi
 [ "$(stat -c '%a' "$TEST_DIR/server.p12")" = 600 ] || fail 'PKCS12 mode is not 0600'
 
-openssl pkcs12 -legacy -in "$TEST_DIR/server.p12" -noout \
+openssl pkcs12 -in "$TEST_DIR/server.p12" -noout \
   -passin "file:$TEST_DIR/password" >/dev/null 2>&1 || fail 'PKCS12 cannot be opened'
-CERT_COUNT=$(openssl pkcs12 -legacy -in "$TEST_DIR/server.p12" -nokeys \
+CERT_COUNT=$(openssl pkcs12 -in "$TEST_DIR/server.p12" -nokeys \
   -passin "file:$TEST_DIR/password" 2>/dev/null | grep -c -- '-----BEGIN CERTIFICATE-----')
 [ "$CERT_COUNT" -eq 2 ] || fail 'PKCS12 does not contain exactly two certificates'
+
+OUTPUT=$(sh "$BUILDER" --cert "$TEST_DIR/server.crt" --key "$TEST_DIR/server.key" \
+  --fullchain "$TEST_DIR/fullchain.crt" --password-file "$TEST_DIR/password" \
+  --compatibility legacy --output "$TEST_DIR/server-legacy.p12")
+printf '%s\n' "$OUTPUT" | grep 'compatibility=legacy' >/dev/null ||
+  fail 'legacy compatibility was not reported'
+openssl pkcs12 -legacy -in "$TEST_DIR/server-legacy.p12" -noout \
+  -passin "file:$TEST_DIR/password" >/dev/null 2>&1 || fail 'legacy PKCS12 cannot be opened'
+
+openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 30 \
+  -subj '/CN=voice.example.invalid' -keyout "$TEST_DIR/ec.key" \
+  -out "$TEST_DIR/ec.crt" >/dev/null 2>&1
+cat "$TEST_DIR/ec.crt" "$TEST_DIR/ca.crt" >"$TEST_DIR/ec-fullchain.crt"
+if sh "$BUILDER" --cert "$TEST_DIR/ec.crt" --key "$TEST_DIR/ec.key" \
+  --fullchain "$TEST_DIR/ec-fullchain.crt" --password-file "$TEST_DIR/password" \
+  --output "$TEST_DIR/ec.p12" >/dev/null 2>&1; then
+  fail 'ECC certificate was accepted for IP Office PKCS12 creation'
+fi
 
 openssl req -newkey rsa:2048 -nodes -subj '/CN=wrong.invalid' \
   -keyout "$TEST_DIR/wrong.key" -out "$TEST_DIR/wrong.csr" >/dev/null 2>&1

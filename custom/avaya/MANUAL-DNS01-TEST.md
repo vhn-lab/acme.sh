@@ -35,6 +35,7 @@ créer un ordre ACME.
   --server letsencrypt_test \
   --dns \
   --yes-I-know-dns-manual-mode-enough-go-ahead-please \
+  --keylength 2048 \
   -d ipo.avaya-lab.vhn.ovh
 ```
 
@@ -59,6 +60,7 @@ Après propagation du TXT, reprendre l'ordre sauvegardé :
   --home /root/orange/script/acme.sh \
   --renew \
   --server letsencrypt_test \
+  --yes-I-know-dns-manual-mode-enough-go-ahead-please \
   -d ipo.avaya-lab.vhn.ovh
 ```
 
@@ -70,6 +72,7 @@ privée.
 
 - le challenge staging est validé ;
 - le certificat couvre exactement `ipo.avaya-lab.vhn.ovh` ;
+- la clé du certificat est RSA 2048, format requis par IP Office ;
 - les fichiers ACME restent sous `/root/orange/script/acme.sh` avec des droits
   privés ;
 - aucun fichier sous `/opt/Avaya` ou dans les répertoires applicatifs ne change ;

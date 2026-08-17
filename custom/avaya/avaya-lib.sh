@@ -122,8 +122,8 @@ avaya_validate_targets() {
     }
     /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
     {
-      if (NF != 7) {
-        fail("expected seven fields")
+      if (NF != 8) {
+        fail("expected eight fields")
         next
       }
       enabled = $1
@@ -131,14 +131,23 @@ avaya_validate_targets() {
       name = $3
       host = $4
       user = $5
-      profile = $6
-      role = $7
+      server_ip = $6
+      profile = $7
+      role = $8
 
       if (enabled != "yes" && enabled != "no") fail("enabled must be yes or no")
       if (type != "ipo") fail("type must be ipo")
       if (name !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/) fail("invalid target name")
-      if (host !~ /^[A-Za-z0-9][A-Za-z0-9._:-]*$/) fail("invalid host")
+      if (host !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/) fail("invalid host")
       if (user !~ /^[A-Za-z_][A-Za-z0-9_-]*$/) fail("invalid SSH user")
+      split(server_ip, octet, ".")
+      if (server_ip !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/) {
+        fail("invalid server IP")
+      } else {
+        for (i = 1; i <= 4; i++) {
+          if (octet[i] < 0 || octet[i] > 255) fail("invalid server IP")
+        }
+      }
       if (profile !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/) fail("invalid certificate profile")
       if (role != "standalone" && role != "primary" && role != "secondary") fail("invalid role")
       if (seen_name[name]++) fail("duplicate target name " name)
@@ -171,6 +180,6 @@ avaya_targets_for_profile() {
 
   awk -F ';' -v profile="$AVAYA_PROFILE" '
     /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
-    $1 == "yes" && $6 == profile { print }
+    $1 == "yes" && $7 == profile { print }
   ' "$AVAYA_TARGETS_FILE"
 }

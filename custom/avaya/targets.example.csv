@@ -1,3 +1,3 @@
-# enabled;type;name;host;sshUser;certificateProfile;role
-yes;ipo;IPO;ipo;root;voice-edge;primary
-no;ipo;IPOS;ipos;root;voice-edge;secondary
+# enabled;type;name;host;sshUser;serverIp;certificateProfile;role
+yes;ipo;IPO;ipo;root;192.0.2.10;voice-edge;primary
+no;ipo;IPOS;ipos;root;192.0.2.11;voice-edge;secondary

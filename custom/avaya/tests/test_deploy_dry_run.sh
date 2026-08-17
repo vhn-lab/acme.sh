@@ -42,13 +42,23 @@ cp "$TEST_ROOT/custom/avaya/targets.example.csv" "$TEST_DIR/targets.csv"
 sed \
   -e "s|^TARGETS_FILE=.*|TARGETS_FILE=$TEST_DIR/targets.csv|" \
   -e "s|^STATE_DIR=.*|STATE_DIR=$TEST_DIR/state|" \
+  -e "s|^LOCK_FILE=.*|LOCK_FILE=$TEST_DIR/deploy.lock|" \
+  -e "s|^SSH_KNOWN_HOSTS=.*|SSH_KNOWN_HOSTS=$TEST_DIR/known_hosts|" \
   "$TEST_ROOT/custom/avaya/config.example" >"$TEST_DIR/config-continue"
+touch "$TEST_DIR/known_hosts"
 
 if sh "$DEPLOYER" --config "$TEST_DIR/config-continue" --profile voice-edge \
   --cert "$TEST_DIR/server.crt" --key "$TEST_DIR/server.key" \
   --fullchain "$TEST_DIR/fullchain.crt" --expected-name voice.example.invalid \
   --trust-file "$TEST_DIR/ca.crt" >/dev/null 2>&1; then
   fail 'deployment engine ran without --dry-run'
+fi
+
+if sh "$DEPLOYER" --apply --config "$TEST_DIR/config-continue" --profile voice-edge \
+  --cert "$TEST_DIR/server.crt" --key "$TEST_DIR/server.key" \
+  --fullchain "$TEST_DIR/fullchain.crt" --expected-name voice.example.invalid \
+  --trust-file "$TEST_DIR/ca.crt" >/dev/null 2>&1; then
+  fail 'apply worked without restart acknowledgement and password file'
 fi
 
 sh "$DEPLOYER" --dry-run --config "$TEST_DIR/config-continue" --profile voice-edge \
@@ -87,6 +97,51 @@ if sh "$DEPLOYER" --dry-run --config "$TEST_DIR/config-stop" --profile voice-edg
 fi
 grep 'target=IPOS .*status=NOT_ATTEMPTED' "$TEST_DIR/plan-stop" >/dev/null ||
   fail 'stop policy did not block the target following a failure'
+
+sed -i 's/^yes;ipo;IPOS;/no;ipo;IPOS;/' "$TEST_DIR/targets.csv"
+rm -f "$TEST_DIR/state/voice-edge/IPO.sha256"
+printf '%s\n' 'fictitious-apply-password' >"$TEST_DIR/password"
+chmod 600 "$TEST_DIR/password"
+cat >"$TEST_DIR/remote-helper" <<'MOCK'
+#!/usr/bin/env sh
+set -eu
+printf '%s\n' "$*" >"$AVAYA_TEST_REMOTE_ARGS"
+MOCK
+chmod 700 "$TEST_DIR/remote-helper"
+AVAYA_TEST_REMOTE_ARGS="$TEST_DIR/remote-args" \
+  AVAYA_REMOTE_HELPER="$TEST_DIR/remote-helper" \
+  sh "$DEPLOYER" --apply --acknowledge-service-restarts \
+  --config "$TEST_DIR/config-continue" --profile voice-edge \
+  --cert "$TEST_DIR/server.crt" --key "$TEST_DIR/server.key" \
+  --fullchain "$TEST_DIR/fullchain.crt" --expected-name voice.example.invalid \
+  --trust-file "$TEST_DIR/ca.crt" --password-file "$TEST_DIR/password" \
+  >"$TEST_DIR/apply-ok"
+grep 'target=IPO .*status=DEPLOYED' "$TEST_DIR/apply-ok" >/dev/null ||
+  fail 'successful remote application was not reported'
+grep -- '--server-ip 192.0.2.10' "$TEST_DIR/remote-args" >/dev/null ||
+  fail 'explicit server IP was not passed to the remote helper'
+[ "$(cat "$TEST_DIR/state/voice-edge/IPO.sha256")" = "$FINGERPRINT" ] ||
+  fail 'successful application did not update state atomically'
+[ "$(stat -c '%a' "$TEST_DIR/deploy.lock")" = 600 ] ||
+  fail 'deployment lock permissions are unsafe'
+
+(
+  flock 8
+  sleep 3
+) 8>"$TEST_DIR/deploy.lock" &
+LOCK_PID=$!
+sleep 1
+if AVAYA_TEST_REMOTE_ARGS="$TEST_DIR/remote-args-locked" \
+  AVAYA_REMOTE_HELPER="$TEST_DIR/remote-helper" \
+  sh "$DEPLOYER" --apply --acknowledge-service-restarts \
+  --config "$TEST_DIR/config-continue" --profile voice-edge \
+  --cert "$TEST_DIR/server.crt" --key "$TEST_DIR/server.key" \
+  --fullchain "$TEST_DIR/fullchain.crt" --expected-name voice.example.invalid \
+  --trust-file "$TEST_DIR/ca.crt" --password-file "$TEST_DIR/password" \
+  >/dev/null 2>&1; then
+  fail 'concurrent deployment was not rejected'
+fi
+wait "$LOCK_PID"
 
 if grep -E 'ssh|scp|sftp|systemctl|gen_certs[.]sh' "$DEPLOYER" >/dev/null; then
   fail 'dry-run engine contains a remote execution or service command'
