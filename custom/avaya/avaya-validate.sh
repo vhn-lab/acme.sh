@@ -5,7 +5,8 @@ set -eu
 usage() {
   printf '%s\n' \
     'Usage: avaya-validate.sh --cert FILE --key FILE --fullchain FILE' \
-    '       --expected-name FQDN [--min-days DAYS] [--trust-file FILE]'
+    '       --expected-name FQDN [--min-days DAYS] [--trust-file FILE]' \
+    '       [--allow-partial-chain]'
 }
 
 fail() {
@@ -25,6 +26,7 @@ FULLCHAIN_FILE=
 EXPECTED_NAME=
 MIN_DAYS=7
 TRUST_FILE=
+ALLOW_PARTIAL_CHAIN=no
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -34,6 +36,7 @@ while [ "$#" -gt 0 ]; do
     --expected-name) [ "$#" -ge 2 ] || fail 'missing value for --expected-name'; EXPECTED_NAME=$2; shift 2 ;;
     --min-days) [ "$#" -ge 2 ] || fail 'missing value for --min-days'; MIN_DAYS=$2; shift 2 ;;
     --trust-file) [ "$#" -ge 2 ] || fail 'missing value for --trust-file'; TRUST_FILE=$2; shift 2 ;;
+    --allow-partial-chain) ALLOW_PARTIAL_CHAIN=yes; shift ;;
     -h | --help) usage; exit 0 ;;
     *) fail "unknown argument: $1" ;;
   esac
@@ -65,6 +68,8 @@ if [ -n "$TRUST_FILE" ]; then
     fail "invalid trust file: $TRUST_FILE"
   fi
 fi
+[ "$ALLOW_PARTIAL_CHAIN" != yes ] || [ -n "$TRUST_FILE" ] ||
+  fail '--allow-partial-chain requires --trust-file'
 
 KEY_MODE=$(stat -c '%a' "$KEY_FILE" 2>/dev/null) || fail 'unable to inspect private-key permissions'
 case "$KEY_MODE" in
@@ -74,6 +79,12 @@ esac
 
 openssl x509 -in "$CERT_FILE" -noout >/dev/null 2>&1 || fail 'certificate is not valid PEM'
 openssl pkey -in "$KEY_FILE" -noout >/dev/null 2>&1 || fail 'private key is not valid PEM'
+CERT_TEXT=$(openssl x509 -in "$CERT_FILE" -noout -text 2>/dev/null) ||
+  fail 'unable to inspect certificate public key'
+printf '%s\n' "$CERT_TEXT" | grep 'Public Key Algorithm: rsaEncryption' >/dev/null 2>&1 ||
+  fail 'IP Office certificate must use RSA'
+printf '%s\n' "$CERT_TEXT" | grep 'Public-Key: (2048 bit)' >/dev/null 2>&1 ||
+  fail 'IP Office certificate must use a 2048-bit RSA key'
 
 VALIDATE_TMP_DIR=$(mktemp -d /tmp/avaya-cert-validate.XXXXXX)
 trap cleanup EXIT HUP INT TERM
@@ -109,8 +120,14 @@ awk '
 [ -s "$INTERMEDIATES" ] || fail 'fullchain does not contain an issuer certificate'
 
 if [ -n "$TRUST_FILE" ]; then
-  openssl verify -CAfile "$TRUST_FILE" -untrusted "$INTERMEDIATES" "$CERT_FILE" >/dev/null 2>&1 ||
-    fail 'certificate chain validation failed'
+  if [ "$ALLOW_PARTIAL_CHAIN" = yes ]; then
+    openssl verify -partial_chain -CAfile "$TRUST_FILE" \
+      -untrusted "$INTERMEDIATES" "$CERT_FILE" >/dev/null 2>&1 ||
+      fail 'certificate partial-chain validation failed'
+  else
+    openssl verify -CAfile "$TRUST_FILE" -untrusted "$INTERMEDIATES" "$CERT_FILE" >/dev/null 2>&1 ||
+      fail 'certificate chain validation failed'
+  fi
 else
   openssl verify -untrusted "$INTERMEDIATES" "$CERT_FILE" >/dev/null 2>&1 ||
     fail 'certificate chain validation failed against system trust store'

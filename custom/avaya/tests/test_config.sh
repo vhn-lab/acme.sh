@@ -38,14 +38,14 @@ fi
 sed -i '$d' "$TEST_DIR/config"
 
 sed -i 's/^no;ipo;IPOS;/yes;ipo;IPOS;/' "$TEST_DIR/targets.csv"
-printf '%s\n' 'yes;ipo;IPO-EXTRA;ipo-extra.example.invalid;root;voice-edge;standalone' >>"$TEST_DIR/targets.csv"
+printf '%s\n' 'yes;ipo;IPO-EXTRA;ipo-extra.example.invalid;root;192.0.2.12;voice-edge;standalone;ssh' >>"$TEST_DIR/targets.csv"
 if avaya_validate_targets "$TEST_DIR/targets.csv" >/dev/null 2>&1; then
   fail 'more than two active IP Office targets were accepted'
 fi
 sed -i '$d' "$TEST_DIR/targets.csv"
 sed -i 's/^yes;ipo;IPOS;/no;ipo;IPOS;/' "$TEST_DIR/targets.csv"
 
-printf '%s\n' 'yes;ipo;BAD;ipo.example.invalid;root;voice-edge;primary;extra' >>"$TEST_DIR/targets.csv"
+printf '%s\n' 'yes;ipo;BAD;ipo.example.invalid;root;192.0.2.12;voice-edge;primary;ssh;extra' >>"$TEST_DIR/targets.csv"
 if avaya_validate_targets "$TEST_DIR/targets.csv" >/dev/null 2>&1; then
   fail 'target with an extra field was accepted'
 fi
@@ -53,16 +53,22 @@ sed -i '$d' "$TEST_DIR/targets.csv"
 
 # The literal command substitution below is malicious test data and must not expand.
 # shellcheck disable=SC2016
-printf '%s\n' 'yes;ipo;BAD;$(touch /tmp/injected);root;voice-edge;primary' >>"$TEST_DIR/targets.csv"
+printf '%s\n' 'yes;ipo;BAD;$(touch /tmp/injected);root;192.0.2.12;voice-edge;primary;ssh' >>"$TEST_DIR/targets.csv"
 if avaya_validate_targets "$TEST_DIR/targets.csv" >/dev/null 2>&1; then
   fail 'target containing command syntax was accepted'
 fi
 [ ! -e /tmp/injected ] || fail 'configuration content was executed'
 
 sed -i '$d' "$TEST_DIR/targets.csv"
-printf '%s\n' 'yes;other;BAD;other.example.invalid;root;voice-edge;primary' >>"$TEST_DIR/targets.csv"
+printf '%s\n' 'yes;other;BAD;other.example.invalid;root;192.0.2.12;voice-edge;primary;ssh' >>"$TEST_DIR/targets.csv"
 if avaya_validate_targets "$TEST_DIR/targets.csv" >/dev/null 2>&1; then
   fail 'unsupported target type was accepted'
+fi
+
+sed -i '$d' "$TEST_DIR/targets.csv"
+printf '%s\n' 'yes;ipo;BAD;ipo.example.invalid;root;999.0.2.12;voice-edge;primary;ssh' >>"$TEST_DIR/targets.csv"
+if avaya_validate_targets "$TEST_DIR/targets.csv" >/dev/null 2>&1; then
+  fail 'invalid server IP was accepted'
 fi
 
 printf '%s\n' 'PASS: Avaya configuration parser tests'

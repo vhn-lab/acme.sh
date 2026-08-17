@@ -44,6 +44,17 @@ openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \
 chmod 600 "$TEST_DIR/server.key" "$TEST_DIR/wrong.key"
 cat "$TEST_DIR/server.crt" "$TEST_DIR/ca.crt" >"$TEST_DIR/fullchain.crt"
 
+openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 30 \
+  -subj '/CN=ipo.example.invalid' -addext 'subjectAltName=DNS:ipo.example.invalid' \
+  -keyout "$TEST_DIR/ec.key" -out "$TEST_DIR/ec.crt" >/dev/null 2>&1
+chmod 600 "$TEST_DIR/ec.key"
+cat "$TEST_DIR/ec.crt" "$TEST_DIR/ca.crt" >"$TEST_DIR/ec-fullchain.crt"
+if sh "$VALIDATOR" --cert "$TEST_DIR/ec.crt" --key "$TEST_DIR/ec.key" \
+  --fullchain "$TEST_DIR/ec-fullchain.crt" --expected-name ipo.example.invalid \
+  --trust-file "$TEST_DIR/ca.crt" >/dev/null 2>&1; then
+  fail 'ECC certificate was accepted for IP Office'
+fi
+
 sh "$VALIDATOR" \
   --cert "$TEST_DIR/server.crt" \
   --key "$TEST_DIR/server.key" \
@@ -51,6 +62,20 @@ sh "$VALIDATOR" \
   --expected-name ipo.example.invalid \
   --min-days 7 \
   --trust-file "$TEST_DIR/ca.crt" >/dev/null || fail 'valid certificate was rejected'
+
+sh "$VALIDATOR" \
+  --cert "$TEST_DIR/server.crt" \
+  --key "$TEST_DIR/server.key" \
+  --fullchain "$TEST_DIR/fullchain.crt" \
+  --expected-name ipo.example.invalid \
+  --trust-file "$TEST_DIR/ca.crt" \
+  --allow-partial-chain >/dev/null || fail 'explicit partial-chain validation was rejected'
+
+if sh "$VALIDATOR" --cert "$TEST_DIR/server.crt" --key "$TEST_DIR/server.key" \
+  --fullchain "$TEST_DIR/fullchain.crt" --expected-name ipo.example.invalid \
+  --allow-partial-chain >/dev/null 2>&1; then
+  fail 'partial-chain validation worked without an explicit trust file'
+fi
 
 if sh "$VALIDATOR" --cert "$TEST_DIR/server.crt" --key "$TEST_DIR/wrong.key" \
   --fullchain "$TEST_DIR/fullchain.crt" --expected-name ipo.example.invalid \

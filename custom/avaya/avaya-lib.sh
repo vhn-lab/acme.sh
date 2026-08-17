@@ -8,11 +8,12 @@ avaya_config_error() {
 avaya_load_config() {
   AVAYA_CONFIG_FILE=$1
 
-  TARGETS_FILE=/etc/acme-avaya/targets.csv
-  STATE_DIR=/var/lib/acme-avaya
-  LOG_FILE=/var/log/acme-avaya/deploy.log
+  TARGETS_FILE=/root/orange/script/acme-avaya/targets.csv
+  STATE_DIR=/root/orange/script/acme-avaya/state
+  LOG_FILE=/root/orange/script/acme-avaya/logs/deploy.log
   LOCK_FILE=/run/lock/acme-avaya-deploy.lock
-  SSH_KNOWN_HOSTS=/etc/acme-avaya/ssh_known_hosts
+  SSH_KNOWN_HOSTS=/root/orange/script/acme-avaya/ssh_known_hosts
+  REMOTE_BACKUP_DIR=/root/orange/script/acme-avaya/backups
   SSH_CONNECT_TIMEOUT=10
   FAILURE_POLICY='continue'
   MIN_REMAINING_DAYS=7
@@ -47,6 +48,7 @@ avaya_load_config() {
       LOG_FILE) LOG_FILE=$AVAYA_VALUE ;;
       LOCK_FILE) LOCK_FILE=$AVAYA_VALUE ;;
       SSH_KNOWN_HOSTS) SSH_KNOWN_HOSTS=$AVAYA_VALUE ;;
+      REMOTE_BACKUP_DIR) REMOTE_BACKUP_DIR=$AVAYA_VALUE ;;
       SSH_CONNECT_TIMEOUT) SSH_CONNECT_TIMEOUT=$AVAYA_VALUE ;;
       FAILURE_POLICY) FAILURE_POLICY=$AVAYA_VALUE ;;
       MIN_REMAINING_DAYS) MIN_REMAINING_DAYS=$AVAYA_VALUE ;;
@@ -57,7 +59,7 @@ avaya_load_config() {
     esac
   done <"$AVAYA_CONFIG_FILE"
 
-  for AVAYA_PATH in "$TARGETS_FILE" "$STATE_DIR" "$LOG_FILE" "$LOCK_FILE" "$SSH_KNOWN_HOSTS"; do
+  for AVAYA_PATH in "$TARGETS_FILE" "$STATE_DIR" "$LOG_FILE" "$LOCK_FILE" "$SSH_KNOWN_HOSTS" "$REMOTE_BACKUP_DIR"; do
     case "$AVAYA_PATH" in
       /*) ;;
       *)
@@ -103,7 +105,7 @@ avaya_load_config() {
       ;;
   esac
 
-  export TARGETS_FILE STATE_DIR LOG_FILE LOCK_FILE SSH_KNOWN_HOSTS
+  export TARGETS_FILE STATE_DIR LOG_FILE LOCK_FILE SSH_KNOWN_HOSTS REMOTE_BACKUP_DIR
   export SSH_CONNECT_TIMEOUT FAILURE_POLICY MIN_REMAINING_DAYS
   return 0
 }
@@ -122,8 +124,8 @@ avaya_validate_targets() {
     }
     /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
     {
-      if (NF != 7) {
-        fail("expected seven fields")
+      if (NF != 9) {
+        fail("expected nine fields")
         next
       }
       enabled = $1
@@ -131,16 +133,28 @@ avaya_validate_targets() {
       name = $3
       host = $4
       user = $5
-      profile = $6
-      role = $7
+      server_ip = $6
+      profile = $7
+      role = $8
+      transport = $9
 
       if (enabled != "yes" && enabled != "no") fail("enabled must be yes or no")
       if (type != "ipo") fail("type must be ipo")
       if (name !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/) fail("invalid target name")
-      if (host !~ /^[A-Za-z0-9][A-Za-z0-9._:-]*$/) fail("invalid host")
+      if (host !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/) fail("invalid host")
       if (user !~ /^[A-Za-z_][A-Za-z0-9_-]*$/) fail("invalid SSH user")
+      split(server_ip, octet, ".")
+      if (server_ip !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/) {
+        fail("invalid server IP")
+      } else {
+        for (i = 1; i <= 4; i++) {
+          if (octet[i] < 0 || octet[i] > 255) fail("invalid server IP")
+        }
+      }
       if (profile !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/) fail("invalid certificate profile")
       if (role != "standalone" && role != "primary" && role != "secondary") fail("invalid role")
+      if (transport != "local" && transport != "ssh") fail("invalid transport")
+      if (transport == "local" && active_local++) fail("only one local target is permitted")
       if (seen_name[name]++) fail("duplicate target name " name)
 
       if (enabled == "yes" && type == "ipo") active_ipo++
@@ -171,6 +185,6 @@ avaya_targets_for_profile() {
 
   awk -F ';' -v profile="$AVAYA_PROFILE" '
     /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
-    $1 == "yes" && $6 == profile { print }
+    $1 == "yes" && $7 == profile { print }
   ' "$AVAYA_TARGETS_FILE"
 }
