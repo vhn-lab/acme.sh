@@ -39,7 +39,9 @@ done
 openssl x509 -in "$EXPECTED_CERT" -noout >/dev/null 2>&1 || fail 'expected certificate is invalid'
 case "$HOST" in '' | *[!A-Za-z0-9._:-]*) fail 'invalid host' ;; esac
 case "$TIMEOUT" in '' | *[!0-9]*) fail 'timeout must be an integer' ;; esac
-[ "$TIMEOUT" -ge 1 ] && [ "$TIMEOUT" -le 60 ] || fail 'timeout must be between 1 and 60'
+if [ "$TIMEOUT" -lt 1 ] || [ "$TIMEOUT" -gt 60 ]; then
+  fail 'timeout must be between 1 and 60'
+fi
 case "$CERT_DIR" in /*) ;; *) fail '--cert-dir must be an absolute path' ;; esac
 
 if [ "$SKIP_MARKER_CHECK" != yes ]; then
@@ -62,7 +64,9 @@ check_port() {
   PORT=$1
   ROLE=$2
   case "$PORT" in '' | *[!0-9]*) fail "invalid port: $PORT" ;; esac
-  [ "$PORT" -ge 1 ] && [ "$PORT" -le 65535 ] || fail "invalid port: $PORT"
+  if [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
+    fail "invalid port: $PORT"
+  fi
 
   PRESENTED=$(timeout "$TIMEOUT" openssl s_client -connect "$HOST:$PORT" \
     -servername "$HOST" </dev/null 2>/dev/null |

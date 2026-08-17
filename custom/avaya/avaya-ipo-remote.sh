@@ -39,7 +39,9 @@ if ! printf '%s\n' "$SERVER_IP" | awk -F. '
   fail 'invalid server IP'
 fi
 for FILE in "$CERT_FILE" "$KEY_FILE" "$FULLCHAIN_FILE" "$PASSWORD_FILE" "$KNOWN_HOSTS"; do
-  [ -f "$FILE" ] && [ -r "$FILE" ] || fail "missing or unreadable input: $FILE"
+  if [ ! -f "$FILE" ] || [ ! -r "$FILE" ]; then
+    fail "missing or unreadable input: $FILE"
+  fi
 done
 case "$CONNECT_TIMEOUT" in '' | *[!0-9]*) fail 'invalid SSH timeout' ;; esac
 

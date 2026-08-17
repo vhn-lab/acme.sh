@@ -117,8 +117,9 @@ OPENSSL_MAJOR=$(openssl version | awk '{ split($2, version, "."); print version[
 case "$OPENSSL_MAJOR" in '' | *[!0-9]*) fail 'cannot determine OpenSSL major version' ;; esac
 USE_LEGACY_PROVIDER=no
 if [ "$OPENSSL_MAJOR" -ge 3 ]; then
-  [ -f "$OPENSSL_CONFIG" ] && [ -r "$OPENSSL_CONFIG" ] ||
+  if [ ! -f "$OPENSSL_CONFIG" ] || [ ! -r "$OPENSSL_CONFIG" ]; then
     fail "OpenSSL 3 compatibility configuration is unavailable: $OPENSSL_CONFIG"
+  fi
   OPENSSL_CONF="$OPENSSL_CONFIG" openssl list -providers 2>/dev/null |
     grep -q '^  legacy$' || fail 'OpenSSL legacy provider could not be activated'
   USE_LEGACY_PROVIDER=yes

@@ -53,6 +53,12 @@ jobs:
       - name: Run IP Office installation adapter tests
         run: sh custom/avaya/tests/test_ipo_install.sh
 
+      - name: Run IP Office remote transport tests
+        run: sh custom/avaya/tests/test_ipo_remote.sh
+
+      - name: Run IP Office endpoint verification tests
+        run: sh custom/avaya/tests/test_ipo_verify.sh
+
   shellcheck-custom:
     name: ShellCheck custom scripts
     runs-on: ubuntu-latest
