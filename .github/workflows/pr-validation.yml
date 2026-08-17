@@ -47,11 +47,17 @@ jobs:
       - name: Run Avaya dry-run deployment planning tests
         run: sh custom/avaya/tests/test_deploy_dry_run.sh
 
+      - name: Run Avaya IP Office deploy hook tests
+        run: sh custom/avaya/tests/test_deploy_hook.sh
+
       - name: Run Avaya PKCS12 creation tests
         run: sh custom/avaya/tests/test_pkcs12.sh
 
       - name: Run IP Office installation adapter tests
         run: sh custom/avaya/tests/test_ipo_install.sh
+
+      - name: Run IP Office local deployment tests
+        run: sh custom/avaya/tests/test_ipo_local.sh
 
       - name: Run IP Office remote transport tests
         run: sh custom/avaya/tests/test_ipo_remote.sh

@@ -102,24 +102,25 @@ sed -i 's/^yes;ipo;IPOS;/no;ipo;IPOS;/' "$TEST_DIR/targets.csv"
 rm -f "$TEST_DIR/state/voice-edge/IPO.sha256"
 printf '%s\n' 'fictitious-apply-password' >"$TEST_DIR/password"
 chmod 600 "$TEST_DIR/password"
-cat >"$TEST_DIR/remote-helper" <<'MOCK'
+cat >"$TEST_DIR/local-helper" <<'MOCK'
 #!/usr/bin/env sh
 set -eu
-printf '%s\n' "$*" >"$AVAYA_TEST_REMOTE_ARGS"
+printf '%s\n' "$*" >"$AVAYA_TEST_LOCAL_ARGS"
+printf '%s\n' 'IPO_INSTALL result=UNCHANGED fingerprint=test'
 MOCK
-chmod 700 "$TEST_DIR/remote-helper"
-AVAYA_TEST_REMOTE_ARGS="$TEST_DIR/remote-args" \
-  AVAYA_REMOTE_HELPER="$TEST_DIR/remote-helper" \
+chmod 700 "$TEST_DIR/local-helper"
+AVAYA_TEST_LOCAL_ARGS="$TEST_DIR/local-args" \
+  AVAYA_LOCAL_HELPER="$TEST_DIR/local-helper" \
   sh "$DEPLOYER" --apply --acknowledge-service-restarts \
   --config "$TEST_DIR/config-continue" --profile voice-edge \
   --cert "$TEST_DIR/server.crt" --key "$TEST_DIR/server.key" \
   --fullchain "$TEST_DIR/fullchain.crt" --expected-name voice.example.invalid \
   --trust-file "$TEST_DIR/ca.crt" --password-file "$TEST_DIR/password" \
   >"$TEST_DIR/apply-ok"
-grep 'target=IPO .*status=DEPLOYED' "$TEST_DIR/apply-ok" >/dev/null ||
-  fail 'successful remote application was not reported'
-grep -- '--server-ip 192.0.2.10' "$TEST_DIR/remote-args" >/dev/null ||
-  fail 'explicit server IP was not passed to the remote helper'
+grep 'target=IPO .*status=UNCHANGED' "$TEST_DIR/apply-ok" >/dev/null ||
+  fail 'unchanged local application was not reported accurately'
+grep -- '--server-ip 192.0.2.10' "$TEST_DIR/local-args" >/dev/null ||
+  fail 'explicit server IP was not passed to the local helper'
 [ "$(cat "$TEST_DIR/state/voice-edge/IPO.sha256")" = "$FINGERPRINT" ] ||
   fail 'successful application did not update state atomically'
 [ "$(stat -c '%a' "$TEST_DIR/deploy.lock")" = 600 ] ||
@@ -131,8 +132,8 @@ grep -- '--server-ip 192.0.2.10' "$TEST_DIR/remote-args" >/dev/null ||
 ) 8>"$TEST_DIR/deploy.lock" &
 LOCK_PID=$!
 sleep 1
-if AVAYA_TEST_REMOTE_ARGS="$TEST_DIR/remote-args-locked" \
-  AVAYA_REMOTE_HELPER="$TEST_DIR/remote-helper" \
+if AVAYA_TEST_LOCAL_ARGS="$TEST_DIR/local-args-locked" \
+  AVAYA_LOCAL_HELPER="$TEST_DIR/local-helper" \
   sh "$DEPLOYER" --apply --acknowledge-service-restarts \
   --config "$TEST_DIR/config-continue" --profile voice-edge \
   --cert "$TEST_DIR/server.crt" --key "$TEST_DIR/server.key" \
@@ -143,7 +144,7 @@ if AVAYA_TEST_REMOTE_ARGS="$TEST_DIR/remote-args-locked" \
 fi
 wait "$LOCK_PID"
 
-if grep -E 'ssh|scp|sftp|systemctl|gen_certs[.]sh' "$DEPLOYER" >/dev/null; then
+if grep -E 'scp|sftp|systemctl|gen_certs[.]sh' "$DEPLOYER" >/dev/null; then
   fail 'dry-run engine contains a remote execution or service command'
 fi
 

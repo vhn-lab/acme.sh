@@ -6,7 +6,7 @@ STATE_DIR=/var/lib/acme-avaya
 LOG_FILE=/var/log/acme-avaya/deploy.log
 LOCK_FILE=/run/lock/acme-avaya-deploy.lock
 SSH_KNOWN_HOSTS=/etc/acme-avaya/ssh_known_hosts
+REMOTE_BACKUP_DIR=/var/lib/acme-avaya/backups
 SSH_CONNECT_TIMEOUT=10
 FAILURE_POLICY=continue
 MIN_REMAINING_DAYS=7
-

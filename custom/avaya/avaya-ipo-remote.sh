@@ -14,6 +14,7 @@ FULLCHAIN_FILE=
 PASSWORD_FILE=
 KNOWN_HOSTS=
 CONNECT_TIMEOUT=10
+BACKUP_DIR=
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -26,6 +27,7 @@ while [ "$#" -gt 0 ]; do
     --password-file) PASSWORD_FILE=$2; shift 2 ;;
     --known-hosts) KNOWN_HOSTS=$2; shift 2 ;;
     --connect-timeout) CONNECT_TIMEOUT=$2; shift 2 ;;
+    --backup-dir) BACKUP_DIR=$2; shift 2 ;;
     *) fail "unknown argument: $1" ;;
   esac
 done
@@ -44,6 +46,7 @@ for FILE in "$CERT_FILE" "$KEY_FILE" "$FULLCHAIN_FILE" "$PASSWORD_FILE" "$KNOWN_
   fi
 done
 case "$CONNECT_TIMEOUT" in '' | *[!0-9]*) fail 'invalid SSH timeout' ;; esac
+case "$BACKUP_DIR" in /*) ;; *) fail 'backup directory must be an absolute path' ;; esac
 
 SSH_BIN=${AVAYA_SSH_BIN:-ssh}
 SCP_BIN=${AVAYA_SCP_BIN:-scp}
@@ -86,11 +89,13 @@ case "$REMOTE_DIR" in /tmp/acme-avaya-deploy.*) ;; *) fail 'remote staging path 
 
 "$SSH_BIN" -o BatchMode=yes -o ConnectTimeout="$CONNECT_TIMEOUT" \
   -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$KNOWN_HOSTS" \
-  "$USER@$HOST" sh -s -- "$REMOTE_DIR" "$SERVER_IP" <<'REMOTE'
+  "$USER@$HOST" sh -s -- "$REMOTE_DIR" "$SERVER_IP" "$BACKUP_DIR" <<'REMOTE'
 set -eu
 REMOTE_DIR=$1
 SERVER_IP=$2
+BACKUP_DIR=$3
 case "$REMOTE_DIR" in /tmp/acme-avaya-deploy.*) ;; *) exit 97 ;; esac
+case "$BACKUP_DIR" in /*) ;; *) exit 96 ;; esac
 cleanup_remote() { rm -rf "$REMOTE_DIR"; }
 trap cleanup_remote EXIT HUP INT TERM
 tar -xzf "$REMOTE_DIR/payload.tar.gz" -C "$REMOTE_DIR"
@@ -100,7 +105,7 @@ chmod 600 "$REMOTE_DIR/payload/openssl-legacy.cnf" "$REMOTE_DIR/payload/server.p
 "$REMOTE_DIR/payload/avaya-ipo-install.sh" --apply --acknowledge-service-restarts \
   --server-ip "$SERVER_IP" --p12 "$REMOTE_DIR/payload/server.p12" \
   --password-file "$REMOTE_DIR/payload/password" --expected-cert "$REMOTE_DIR/payload/cert.pem" \
-  --backup-dir /root/orange/script/acme.sh/avaya-backups \
+  --backup-dir "$BACKUP_DIR" \
   --openssl-config "$REMOTE_DIR/payload/openssl-legacy.cnf"
 N=1
 while [ "$N" -le 15 ]; do

@@ -36,6 +36,7 @@ SIMULATE_FAILURE=
 PASSWORD_FILE=
 ALLOW_PARTIAL_CHAIN=no
 REMOTE_HELPER=${AVAYA_REMOTE_HELPER:-$SCRIPT_DIR/avaya-ipo-remote.sh}
+LOCAL_HELPER=${AVAYA_LOCAL_HELPER:-$SCRIPT_DIR/avaya-ipo-local.sh}
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -117,7 +118,7 @@ printf 'PLAN_START mode=%s profile=%s fingerprint=%s failure_policy=%s\n' \
 
 PLAN_STOPPED=no
 PLAN_FAILURES=0
-while IFS=';' read -r TARGET_ENABLED TARGET_TYPE TARGET_NAME TARGET_HOST TARGET_USER TARGET_SERVER_IP TARGET_PROFILE TARGET_ROLE; do
+while IFS=';' read -r TARGET_ENABLED TARGET_TYPE TARGET_NAME TARGET_HOST TARGET_USER TARGET_SERVER_IP TARGET_PROFILE TARGET_ROLE TARGET_TRANSPORT; do
 
   [ "$TARGET_ENABLED" = yes ] || fail "inactive target unexpectedly selected: $TARGET_NAME"
   [ "$TARGET_PROFILE" = "$PROFILE" ] || fail "wrong profile unexpectedly selected: $TARGET_NAME"
@@ -139,17 +140,32 @@ while IFS=';' read -r TARGET_ENABLED TARGET_TYPE TARGET_NAME TARGET_HOST TARGET_
     if [ "$APPLY" != yes ] && [ "$INSTALLED_FINGERPRINT" = "$FINGERPRINT" ]; then
       TARGET_STATUS=UNCHANGED
     elif [ "$APPLY" = yes ]; then
-      if sh "$REMOTE_HELPER" --host "$TARGET_HOST" --user "$TARGET_USER" \
-        --server-ip "$TARGET_SERVER_IP" --cert "$CERT_FILE" --key "$KEY_FILE" \
-        --fullchain "$FULLCHAIN_FILE" --password-file "$PASSWORD_FILE" \
-        --known-hosts "$SSH_KNOWN_HOSTS" --connect-timeout "$SSH_CONNECT_TIMEOUT"; then
+      if [ "$TARGET_TRANSPORT" = local ]; then
+        TARGET_HELPER=$LOCAL_HELPER
+        set -- --server-ip "$TARGET_SERVER_IP" --cert "$CERT_FILE" --key "$KEY_FILE" \
+          --fullchain "$FULLCHAIN_FILE" --password-file "$PASSWORD_FILE" \
+          --backup-dir "$REMOTE_BACKUP_DIR"
+      else
+        TARGET_HELPER=$REMOTE_HELPER
+        set -- --host "$TARGET_HOST" --user "$TARGET_USER" \
+          --server-ip "$TARGET_SERVER_IP" --cert "$CERT_FILE" --key "$KEY_FILE" \
+          --fullchain "$FULLCHAIN_FILE" --password-file "$PASSWORD_FILE" \
+          --known-hosts "$SSH_KNOWN_HOSTS" --connect-timeout "$SSH_CONNECT_TIMEOUT" \
+          --backup-dir "$REMOTE_BACKUP_DIR"
+      fi
+      if TARGET_OUTPUT=$(sh "$TARGET_HELPER" "$@"); then
+        printf '%s\n' "$TARGET_OUTPUT"
         mkdir -p "$STATE_DIR/$PROFILE"
         chmod 700 "$STATE_DIR" "$STATE_DIR/$PROFILE"
         STATE_TMP="$STATE_FILE.tmp.$$"
         printf '%s\n' "$FINGERPRINT" >"$STATE_TMP"
         chmod 600 "$STATE_TMP"
         mv "$STATE_TMP" "$STATE_FILE"
-        TARGET_STATUS=DEPLOYED
+        if printf '%s\n' "$TARGET_OUTPUT" | grep '^IPO_INSTALL result=UNCHANGED ' >/dev/null; then
+          TARGET_STATUS=UNCHANGED
+        else
+          TARGET_STATUS=DEPLOYED
+        fi
       else
         TARGET_STATUS=FAILED
         PLAN_FAILURES=$((PLAN_FAILURES + 1))
@@ -160,9 +176,9 @@ while IFS=';' read -r TARGET_ENABLED TARGET_TYPE TARGET_NAME TARGET_HOST TARGET_
     fi
   fi
 
-  printf 'PLAN target=%s type=%s host=%s user=%s server_ip=%s role=%s status=%s\n' \
+  printf 'PLAN target=%s type=%s host=%s user=%s server_ip=%s role=%s transport=%s status=%s\n' \
     "$TARGET_NAME" "$TARGET_TYPE" "$TARGET_HOST" "$TARGET_USER" \
-    "$TARGET_SERVER_IP" "$TARGET_ROLE" "$TARGET_STATUS"
+    "$TARGET_SERVER_IP" "$TARGET_ROLE" "$TARGET_TRANSPORT" "$TARGET_STATUS"
 done <<EOF
 $TARGET_LIST
 EOF

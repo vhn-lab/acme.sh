@@ -30,7 +30,7 @@ parses a fixed allowlist of keys and never executes the file with `source` or `.
 `targets.example.csv` declares one deployment target per line:
 
 ```text
-enabled;type;name;host;sshUser;serverIp;certificateProfile;role
+enabled;type;name;host;sshUser;serverIp;certificateProfile;role;transport
 ```
 
 - `enabled`: `yes` or `no`.
@@ -42,10 +42,12 @@ enabled;type;name;host;sshUser;serverIp;certificateProfile;role
   inferred from remote interfaces.
 - `certificateProfile`: groups targets that receive the same certificate.
 - `role`: `standalone`, `primary`, or `secondary`.
+- `transport`: `local` for the IP Office running acme.sh, or `ssh` for a
+  secondary target. Only one active local target is permitted.
 
-This model supports one or two IP Office systems without duplicating deployment
-scripts. It also allows the two systems to use separate certificates by assigning
-different certificate profiles.
+This model supports one local IP Office and an optional remote IP Office without
+duplicating deployment scripts. It also allows the two systems to use separate
+certificates by assigning different certificate profiles.
 
 The example enables one IP Office system and keeps a second system disabled. Set
 the second target to `enabled=yes` only after it is available in the LAB and its
@@ -113,3 +115,30 @@ The remote helper uses BatchMode, strict host-key checking, the configured SSH
 timeout, and a private `mktemp` staging directory. It removes the remote payload
 on exit and records a local fingerprint only after endpoint verification. In
 apply mode, an exclusive `flock` on `LOCK_FILE` prevents concurrent deployments.
+
+## acme.sh deploy hook
+
+`deploy/avaya_ipo.sh` connects successful issuance and renewal to the controlled
+deployment engine. The hook stores only configuration paths and non-secret
+settings in the certificate's acme.sh deployment configuration. The PKCS12
+password remains in a root-readable external file.
+
+The initial deployment requires explicit configuration:
+
+```sh
+export AVAYA_IPO_CONFIG=/etc/acme-avaya/config
+export AVAYA_IPO_PROFILE=voice-edge
+export AVAYA_IPO_PASSWORD_FILE=/etc/acme-avaya/p12-password
+export AVAYA_IPO_DEPLOYER=/root/orange/script/acme.sh/custom/avaya/avaya-deploy.sh
+export AVAYA_IPO_ACKNOWLEDGE_SERVICE_RESTARTS=yes
+
+acme.sh --deploy -d voice.example.invalid --deploy-hook avaya_ipo
+```
+
+The hook persists these values for automatic renewal. `AVAYA_IPO_EXPECTED_NAME`
+defaults to the certificate domain. `AVAYA_IPO_TRUST_FILE` and
+`AVAYA_IPO_ALLOW_PARTIAL_CHAIN=yes` are optional validation settings.
+
+The deployment configuration must set `REMOTE_BACKUP_DIR` to an absolute path
+on every IP Office target. This keeps the production installation convention
+outside the hook and deployment helpers.

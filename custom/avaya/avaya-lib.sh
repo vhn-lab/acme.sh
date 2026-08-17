@@ -13,6 +13,7 @@ avaya_load_config() {
   LOG_FILE=/var/log/acme-avaya/deploy.log
   LOCK_FILE=/run/lock/acme-avaya-deploy.lock
   SSH_KNOWN_HOSTS=/etc/acme-avaya/ssh_known_hosts
+  REMOTE_BACKUP_DIR=/var/lib/acme-avaya/backups
   SSH_CONNECT_TIMEOUT=10
   FAILURE_POLICY='continue'
   MIN_REMAINING_DAYS=7
@@ -47,6 +48,7 @@ avaya_load_config() {
       LOG_FILE) LOG_FILE=$AVAYA_VALUE ;;
       LOCK_FILE) LOCK_FILE=$AVAYA_VALUE ;;
       SSH_KNOWN_HOSTS) SSH_KNOWN_HOSTS=$AVAYA_VALUE ;;
+      REMOTE_BACKUP_DIR) REMOTE_BACKUP_DIR=$AVAYA_VALUE ;;
       SSH_CONNECT_TIMEOUT) SSH_CONNECT_TIMEOUT=$AVAYA_VALUE ;;
       FAILURE_POLICY) FAILURE_POLICY=$AVAYA_VALUE ;;
       MIN_REMAINING_DAYS) MIN_REMAINING_DAYS=$AVAYA_VALUE ;;
@@ -57,7 +59,7 @@ avaya_load_config() {
     esac
   done <"$AVAYA_CONFIG_FILE"
 
-  for AVAYA_PATH in "$TARGETS_FILE" "$STATE_DIR" "$LOG_FILE" "$LOCK_FILE" "$SSH_KNOWN_HOSTS"; do
+  for AVAYA_PATH in "$TARGETS_FILE" "$STATE_DIR" "$LOG_FILE" "$LOCK_FILE" "$SSH_KNOWN_HOSTS" "$REMOTE_BACKUP_DIR"; do
     case "$AVAYA_PATH" in
       /*) ;;
       *)
@@ -103,7 +105,7 @@ avaya_load_config() {
       ;;
   esac
 
-  export TARGETS_FILE STATE_DIR LOG_FILE LOCK_FILE SSH_KNOWN_HOSTS
+  export TARGETS_FILE STATE_DIR LOG_FILE LOCK_FILE SSH_KNOWN_HOSTS REMOTE_BACKUP_DIR
   export SSH_CONNECT_TIMEOUT FAILURE_POLICY MIN_REMAINING_DAYS
   return 0
 }
@@ -122,8 +124,8 @@ avaya_validate_targets() {
     }
     /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
     {
-      if (NF != 8) {
-        fail("expected eight fields")
+      if (NF != 9) {
+        fail("expected nine fields")
         next
       }
       enabled = $1
@@ -134,6 +136,7 @@ avaya_validate_targets() {
       server_ip = $6
       profile = $7
       role = $8
+      transport = $9
 
       if (enabled != "yes" && enabled != "no") fail("enabled must be yes or no")
       if (type != "ipo") fail("type must be ipo")
@@ -150,6 +153,8 @@ avaya_validate_targets() {
       }
       if (profile !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/) fail("invalid certificate profile")
       if (role != "standalone" && role != "primary" && role != "secondary") fail("invalid role")
+      if (transport != "local" && transport != "ssh") fail("invalid transport")
+      if (transport == "local" && active_local++) fail("only one local target is permitted")
       if (seen_name[name]++) fail("duplicate target name " name)
 
       if (enabled == "yes" && type == "ipo") active_ipo++
