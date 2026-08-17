@@ -31,6 +31,7 @@ case "$1" in
     while [ "$#" -gt 0 ]; do
       case "$1" in --pass) PASS=$2; shift 2 ;; --server-ip) IP=$2; shift 2 ;; *) exit 90 ;; esac
     done
+    [ "${AVAYA_TEST_IMPORT_FAIL:-no}" != yes ] || exit 95
     openssl pkcs12 -legacy -in "$AVAYA_TEST_CERT_DIR/server_$IP.p12" -nocerts -nodes \
       -passin "pass:$PASS" 2>/dev/null >"$AVAYA_TEST_CERT_DIR/cert_to_import.pem"
     openssl pkcs12 -legacy -in "$AVAYA_TEST_CERT_DIR/server_$IP.p12" -clcerts -nokeys \
@@ -110,6 +111,15 @@ openssl req -x509 -newkey rsa:2048 -nodes -days 30 -subj '/CN=replacement.exampl
 openssl pkcs12 -export -name server -in "$TEST_DIR/replacement.crt" \
   -inkey "$TEST_DIR/replacement.key" -passout "file:$TEST_DIR/password" \
   -out "$TEST_DIR/replacement.p12" >/dev/null 2>&1
+IMPORT_FP=$(openssl x509 -in "$TEST_DIR/certs/cert_to_import.pem" -noout -fingerprint -sha256)
+if AVAYA_TEST_IMPORT_FAIL=yes run_installer --apply --acknowledge-service-restarts \
+  --server-ip 192.0.2.11 --p12 "$TEST_DIR/replacement.p12" \
+  --password-file "$TEST_DIR/password" --expected-cert "$TEST_DIR/replacement.crt" \
+  >/dev/null 2>&1; then
+  fail 'simulated Avaya import failure returned success'
+fi
+[ "$(openssl x509 -in "$TEST_DIR/certs/cert_to_import.pem" -noout -fingerprint -sha256)" = "$IMPORT_FP" ] ||
+  fail 'adapter modified the Avaya import certificate after a script failure'
 OUTPUT=$(run_installer --apply --acknowledge-service-restarts --server-ip 192.0.2.11 \
   --p12 "$TEST_DIR/replacement.p12" --password-file "$TEST_DIR/password" \
   --expected-cert "$TEST_DIR/replacement.crt")

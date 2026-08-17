@@ -81,6 +81,10 @@ renewal remain out of scope until a DNS API integration can be tested safely.
   and any pre-existing import file. Application keystores are not copied.
 - A completed Avaya distribution has `.distrib_complete` present and
   `.distrib_inprogress` absent under `/opt/Avaya/certs/`.
+- The adapter writes only the temporary `server_<IP>.p12` input required by
+  `gen_certs.sh`. It never replaces, restores, or removes active Avaya
+  certificate files directly. Import and distribution changes are performed
+  exclusively by Avaya's script.
 - Validate certificate fingerprints on ports 411, 443, 5061, 7070
   (WebManager), 52233 (WebLM), and 9443 (one-X Portal HTTPS).
 - Port 7071 is WebControl. When `/opt/Avaya/certs/.wcp_no_restart` exists,

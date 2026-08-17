@@ -208,12 +208,7 @@ STAGED_P12=$DEST_P12
 
 PASSWORD=$(sed -n '1p' "$PASSWORD_FILE")
 if ! run_gen_certs --install-p12cert --pass "$PASSWORD" --server-ip "$SERVER_IP"; then
-  if [ -n "$BACKUP_FILE" ] && [ -f "$BACKUP_FILE" ]; then
-    cp -p "$BACKUP_FILE" "$OUT_CERT"
-  else
-    rm -f "$OUT_CERT"
-  fi
-  fail 'Avaya PKCS12 import failed; previous certificate restored when available'
+  fail 'Avaya PKCS12 import failed; Avaya certificate files were not modified by the adapter'
 fi
 PASSWORD=
 IMPORT_COMPLETED=yes
@@ -223,12 +218,7 @@ STAGED_P12=
 IMPORTED_FP=$(openssl x509 -in "$OUT_CERT" -noout -fingerprint -sha256 2>/dev/null |
   sed 's/^sha256 Fingerprint=//;s/^SHA256 Fingerprint=//') || true
 if [ "$IMPORTED_FP" != "$EXPECTED_FP" ]; then
-  if [ -n "$BACKUP_FILE" ] && [ -f "$BACKUP_FILE" ]; then
-    cp -p "$BACKUP_FILE" "$OUT_CERT"
-  else
-    rm -f "$OUT_CERT"
-  fi
-  fail 'imported certificate fingerprint is wrong; distribution was not started'
+  fail 'imported certificate fingerprint is wrong; distribution was not started and Avaya files were not modified by the adapter'
 fi
 
 if ! run_gen_certs --distribute-server-cert; then
